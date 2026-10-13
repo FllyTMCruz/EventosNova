@@ -1,27 +1,34 @@
-# EventosNova
+# 🚀 Eventos Nova - Sistema de Gestión de Eventos
 
-## Descripción
-Repositorio del equipo 16 para el proyecto EventosNova.
+> **Repositorio oficial del Equipo 16**  
+> **Universidad Autónoma de Nuevo León (UANL) | FIME**  
+> **Materia:** Componentes de Lógica de Negocios  
+> **Unidad 3:** Diseño Arquitectónico del Sistema
 
-## Estructura del repositorio
+---
 
-- [`docs/`](docs/): informe, decisiones de arquitectura, trazabilidad y bitácora de IA.
-- [`diagrams/`](diagrams/): archivos fuente y exportaciones de diagramas.
-- [`src/`](src/): código organizado por dominio, aplicación e infraestructura.
-- [`tests/`](tests/): escenarios y pruebas seleccionadas.
+## 📌 Descripción del Proyecto
+**Eventos Nova** es una plataforma integral diseñada para la planificación, gestión financiera y coordinación logística de eventos. 
 
-## Alcance
+Este repositorio contiene la arquitectura base del sistema, desarrollada aplicando los principios de **Domain-Driven Design (DDD)**, **Clean Architecture** y **SOLID**, garantizando un alto nivel de desacoplamiento, escalabilidad y una clara separación de responsabilidades a través de contextos delimitados (*Bounded Contexts*).
 
-Completar esta sección con el objetivo del sistema, usuarios objetivo, funcionalidades principales y límites del proyecto.
+---
 
-## Inicio rápido
+## 🏗️ Arquitectura y Modelo de Dominio
+El núcleo del sistema está dividido en dos agregados principales que se comunican mediante **Consistencia Eventual** (Eventos de Dominio), evitando el acoplamiento transaccional:
 
-Documentar aquí los requisitos, comandos de instalación, configuración y ejecución del proyecto.
+1. **Agregado Operativo (`Evento`):** Orquesta la logística, el ciclo de vida del evento, y administra las asignaciones de proveedores (Regla de negocio: Límite de 15 proveedores y SLA de 48h).
+2. **Agregado Financiero (`CuentaDePagos`):** Maneja de forma aislada los cálculos de presupuestos, pagos, devoluciones y penalizaciones.
 
-## Entregables
+> 📄 *El mapa de dominio detallado y las reglas de negocio (BRD) se encuentran en la carpeta `/docs`.*
 
-Consultar la documentación en [`docs/README.md`](docs/README.md) y los diagramas en [`diagrams/README.md`](diagrams/README.md).
+---
 
-## Equipo
+## 📁 Estructura del Repositorio
 
-Equipo 16.
+La organización del código y la documentación sigue los estándares de la industria para arquitecturas limpias:
+
+* 📂 **`/docs`**: Contiene la documentación formal del proyecto (ADRs, Mapas de Dominio en PDF, Matrices de Trazabilidad y Bitácoras).
+* 📂 **`/diagrams`**: Archivos de código fuente de los diagramas (`.puml` PlantUML) y sus renderizados en `.png`.
+* 📂 **`/src`**: Código base (*boilerplate*) en C# con las definiciones de la capa de Dominio y la capa de Infraestructura (Interfaces genéricas, Repositorios e `IUnitOfWork`).
+* 📂 **`/tests`**: Carpeta reservada para la futura implementación de pruebas unitarias y de integración.
