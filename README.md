@@ -20,7 +20,7 @@ El núcleo del sistema está dividido en dos agregados principales que se comuni
 1. **Agregado Operativo (`Evento`):** Orquesta la logística, el ciclo de vida del evento, y administra las asignaciones de proveedores (Regla de negocio: Límite de 15 proveedores y SLA de 48h).
 2. **Agregado Financiero (`CuentaDePagos`):** Maneja de forma aislada los cálculos de presupuestos, pagos, devoluciones y penalizaciones.
 
-> 📄 *El mapa de dominio detallado y las reglas de negocio (BRD) se encuentran en la carpeta `/docs`.*
+
 
 ---
 
