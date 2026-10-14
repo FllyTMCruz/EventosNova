@@ -1,0 +1,59 @@
+@startuml
+package "Agregado: Evento (Operativo)" {
+  class Evento <<Aggregate Root>> {
+    + id: UUID
+    + estadoEvento: EstadoEventoEnum
+    + formalizarContrato()
+    + solicitarCambioAlcance()
+  }
+
+  class AsignacionProveedor <<Entity Interna>> {
+    + estadoAsignacion: EstadoAsignacionEnum
+    + evaluarSLA()
+  }
+
+  class SLACofirmacion <<Value Object>>
+  class CotizacionIncremento <<Entity Interna>>
+
+  Evento "1" *-- "1..15" AsignacionProveedor : BR-15
+  Evento "1" *-- "0..*" CotizacionIncremento
+  AsignacionProveedor "1" *-- "1" SLACofirmacion
+}
+
+package "Agregado: Cuenta de Pagos (Financiero)" {
+  class CuentaDePagos <<Aggregate Root>> {
+    + id: UUID
+    + eventoId: UUID
+    + estadoPago: EstadoPagoEnum
+    + calcularDevolucion()
+    + registrarPago()
+  }
+
+  class MontoContractual <<Value Object>> {
+    + subtotal: Decimal
+    + pagosRealizados: Decimal
+    + calcularSaldoPendiente()
+  }
+
+  class GastosComprometidos <<Value Object>>
+
+  CuentaDePagos "1" *-- "1" MontoContractual
+  CuentaDePagos "1" *-- "0..*" GastosComprometidos
+}
+
+class Cliente <<Aggregate Root>> {
+  + id: UUID
+}
+class Proveedor <<Aggregate Root>> {
+  + id: UUID
+}
+class LogAuditoria <<Entity>>
+note right of LogAuditoria : Append-only
+
+Evento "0..*" --> "1" Cliente : refClienteID
+AsignacionProveedor "0..*" --> "1" Proveedor : refProveedorID
+CuentaDePagos "1" --> "1" Evento : refEventoID
+
+Evento ..> CuentaDePagos : ContratoFormalizado,\nAlcanceModificado,\nCotizacionIncrementoAprobada
+Evento ..> LogAuditoria : CambioRegistrado (FR-17)
+@enduml
