@@ -142,9 +142,9 @@
     </div>
     <div class="links">
       <span>Evento Activo: <strong id="lblEventoId">Ninguno</strong></span>
-      <a href="/docs" target="_blank">[Abrir Swagger UI Oficial (/docs)]</a>
-      <a href="/openapi.json" target="_blank">[OpenAPI JSON]</a>
-      <a href="/health" target="_blank">[Health]</a>
+      <a href="http://127.0.0.1:8000/docs" target="_blank">[Abrir Swagger UI Oficial (/docs)]</a>
+      <a href="http://127.0.0.1:8000/openapi.json" target="_blank">[OpenAPI JSON]</a>
+      <a href="http://127.0.0.1:8000/health" target="_blank">[Health]</a>
     </div>
   </header>
 
@@ -278,6 +278,7 @@
   <script>
     let eventoActualId = null;
     let ultimoProveedorPendienteId = null;
+    const API_BASE = window.location.protocol === 'file:' ? 'http://127.0.0.1:8000' : '';
 
     function uuid4() {
       return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
@@ -309,7 +310,7 @@
         ],
         usuario_id: uuid4()
       };
-      const r = await fetch('/eventos', {
+      const r = await fetch(`${API_BASE}/eventos`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -325,7 +326,7 @@
 
     async function formalizarContrato() {
       if (!eventoActualId) return alert('Primero crea un evento en el Paso 1.');
-      const r = await fetch(`/eventos/${eventoActualId}/formalizar`, {
+      const r = await fetch(`${API_BASE}/eventos/${eventoActualId}/formalizar`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ fecha_operacion: "2027-05-01T12:00:00Z" })
@@ -342,7 +343,7 @@
         moneda: "MXN",
         referencia_pago: document.getElementById('inpRefPago').value
       };
-      const r = await fetch(`/eventos/${eventoActualId}/pagos`, {
+      const r = await fetch(`${API_BASE}/eventos/${eventoActualId}/pagos`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -364,7 +365,7 @@
         porcentaje_anticipo_adicional: "0.30",
         fecha_solicitud: fechaSolicitud
       };
-      const r = await fetch(`/eventos/${eventoActualId}/cambios-alcance`, {
+      const r = await fetch(`${API_BASE}/eventos/${eventoActualId}/cambios-alcance`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -382,7 +383,7 @@
         nombre_servicio: "Fotografía y Video Drone",
         confirmar_inmediatamente: false
       };
-      const r = await fetch(`/eventos/${eventoActualId}/proveedores`, {
+      const r = await fetch(`${API_BASE}/eventos/${eventoActualId}/proveedores`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -397,7 +398,7 @@
       if (!eventoActualId || !ultimoProveedorPendienteId) {
         return alert('Primero asigna un proveedor pendiente con el botón 5a.');
       }
-      const r = await fetch(`/eventos/${eventoActualId}/proveedores/${ultimoProveedorPendienteId}/confirmar`, {
+      const r = await fetch(`${API_BASE}/eventos/${eventoActualId}/proveedores/${ultimoProveedorPendienteId}/confirmar`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({})
@@ -409,7 +410,7 @@
 
     async function finalizarEvento() {
       if (!eventoActualId) return alert('Primero crea un evento en el Paso 1.');
-      const r = await fetch(`/eventos/${evento_id_val()}/finalizar`, {
+      const r = await fetch(`${API_BASE}/eventos/${evento_id_val()}/finalizar`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({})
@@ -421,7 +422,7 @@
 
     async function cancelarEvento() {
       if (!eventoActualId) return alert('Primero crea un evento en el Paso 1.');
-      const r = await fetch(`/eventos/${eventoActualId}/cancelar`, {
+      const r = await fetch(`${API_BASE}/eventos/${eventoActualId}/cancelar`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -437,7 +438,7 @@
     function evento_id_val() { return eventoActualId; }
 
     async function evaluarSLA() {
-      const r = await fetch('/eventos/evaluar-sla-proveedores', {
+      const r = await fetch(`${API_BASE}/eventos/evaluar-sla-proveedores`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ fecha_corte: "2028-01-01T00:00:00Z" })
@@ -449,7 +450,7 @@
 
     async function refrescarEstado() {
       if (!eventoActualId) return;
-      const rSaldo = await fetch(`/eventos/${eventoActualId}/saldo`);
+      const rSaldo = await fetch(`${API_BASE}/eventos/${eventoActualId}/saldo`);
       if (rSaldo.ok) {
         const s = await rSaldo.json();
         document.getElementById('kEstadoEvento').textContent = s.estado_evento;
@@ -462,7 +463,7 @@
         document.getElementById('kAnticipo').textContent = s.anticipo_cubierto ? 'SÍ (Cubierto)' : 'NO (Pendiente)';
       }
 
-      const rAud = await fetch(`/eventos/${eventoActualId}/auditoria`);
+      const rAud = await fetch(`${API_BASE}/eventos/${eventoActualId}/auditoria`);
       if (rAud.ok) {
         const a = await rAud.json();
         const tbody = document.getElementById('tblAuditoria');
