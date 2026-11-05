@@ -1,0 +1,103 @@
+@startuml Diagrama_Clases_EventosNova
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+skinparam roundcorner 5
+
+package "Dominio (Domain)" {
+    class Evento <<Aggregate Root>> {
+        - id: UUID
+        - clienteId: UUID
+        - fechaEvento: DateTime
+        - cantidadInvitados: int
+        - estadoEvento: EstadoEventoEnum
+        + formalizarContrato(montoAnticipo: Decimal, comprobanteId: UUID, userId: UUID, rol: String): void
+        + solicitarCambioAlcance(cambio: CambioAlcanceDTO, fechaSol: Date, viabilidad: boolean, userId: UUID, rol: String): ResultadoCambio
+        + evaluarSLA(ahora: DateTime): void
+        + marcarComoPagado(): void
+    }
+
+    class AsignacionProveedor <<Entity>> {
+        - id: UUID
+        - proveedorId: UUID
+        - estadoAsignacion: EstadoAsignacionEnum
+        - fechaLimiteConfirmacion: DateTime
+        + evaluarSLA(ahora: DateTime): boolean
+    }
+
+    class CotizacionIncremento <<Entity>> {
+        - id: UUID
+        - costoAdicional: Decimal
+        - estado: EstadoCotizacionEnum
+    }
+
+    class CuentaDePagos <<Aggregate Root>> {
+        - id: UUID
+        - eventoId: UUID
+        - estadoPago: EstadoPagoEnum
+        + registrarPago(monto: Decimal): void
+        + calcularDevolucion(): Decimal
+    }
+
+    class MontoContractual <<Value Object>> {
+        - subtotal: Decimal
+        - anticipoPactado: Decimal
+        - pagosRealizados: Decimal
+        - totalIncrementos: Decimal
+        + calcularSaldoPendiente(): Decimal
+    }
+
+    class LogAuditoria <<Entity Append-Only>> {
+        - id: UUID
+        - userId: UUID
+        - rol: String
+        - tipoCambio: String
+        - fecha: DateTime
+    }
+
+    Evento "1" *-- "1..15" AsignacionProveedor
+    Evento "1" *-- "0..*" CotizacionIncremento
+    CuentaDePagos "1" *-- "1" MontoContractual
+}
+
+package "Aplicación (Application Layer)" {
+    class FormalizarContratoHandler <<Command Handler>> {
+        + manejar(cmd: FormalizarContratoCommand): Result<ResultadoFormalizacion>
+    }
+
+    class ProcesarCambioAlcanceHandler <<Command Handler>> {
+        + manejar(cmd: ProcesarCambioAlcanceCommand): Result<ResultadoCambioAlcance>
+    }
+
+    class ConsultarSaldoPendienteHandler <<Query Handler>> {
+        + manejar(query: ConsultarSaldoPendienteQuery): Result<SaldoPendienteViewModel>
+    }
+}
+
+package "Infraestructura (Interfaces Persistencia)" {
+    interface IEventoRepository {
+        + obtenerPorId(id: UUID): Task<Evento>
+        + guardar(evento: Evento): Task
+        + listarConAsignacionesPendientes(): Task<IEnumerable<Evento>>
+        + listarFormalizadosSinLiquidar(): Task<IEnumerable<Evento>>
+    }
+
+    interface ICuentaDePagosRepository {
+        + obtenerPorEventoId(eventoId: UUID): Task<CuentaDePagos>
+        + guardar(cuenta: CuentaDePagos): Task
+    }
+
+    interface IRegistroAuditoriaRepository {
+        + agregar(registro: LogAuditoria): Task
+    }
+
+    interface IUnitOfWork {
+        + confirmar(): Task<int>
+        + revertir(): Task
+    }
+}
+
+FormalizarContratoHandler ..> IEventoRepository
+FormalizarContratoHandler ..> IUnitOfWork
+ProcesarCambioAlcanceHandler ..> IEventoRepository
+ProcesarCambioAlcanceHandler ..> IUnitOfWork
+@enduml

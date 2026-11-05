@@ -1,4 +1,4 @@
-@startuml
+﻿@startuml
 package "Agregado: Evento (Operativo)" {
   class Evento <<Aggregate Root>> {
     + id: UUID
@@ -12,12 +12,12 @@ package "Agregado: Evento (Operativo)" {
     + evaluarSLA()
   }
 
-  class SLACofirmacion <<Value Object>>
+  class SLAConfirmacion <<Value Object>>
   class CotizacionIncremento <<Entity Interna>>
 
   Evento "1" *-- "1..15" AsignacionProveedor : BR-15
   Evento "1" *-- "0..*" CotizacionIncremento
-  AsignacionProveedor "1" *-- "1" SLACofirmacion
+  AsignacionProveedor "1" *-- "1" SLAConfirmacion
 }
 
 package "Agregado: Cuenta de Pagos (Financiero)" {
@@ -57,3 +57,4 @@ CuentaDePagos "1" --> "1" Evento : refEventoID
 Evento ..> CuentaDePagos : ContratoFormalizado,\nAlcanceModificado,\nCotizacionIncrementoAprobada
 Evento ..> LogAuditoria : CambioRegistrado (FR-17)
 @enduml
+

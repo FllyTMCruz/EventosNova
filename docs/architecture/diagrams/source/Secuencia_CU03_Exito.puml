@@ -1,0 +1,95 @@
+@startuml Secuencia_CU03_Exito
+' Diagrama 1 (Rol 2) - CU-03 Formalizar contrato de evento, flujo exitoso
+' Reglas: BR-07 (cuatro condiciones). Decisiones: D1, D4, D5 y ADR-002.
+' Los nombres de componentes coinciden con Service_Layer.md y CQRS.md.
+
+title CU-03 Formalizar contrato de evento: flujo exitoso\nBR-07 | Command: FormalizarContratoCommand
+skinparam shadowing false
+skinparam sequenceMessageAlign left
+skinparam responseMessageBelowArrow true
+skinparam ParticipantPadding 8
+skinparam BoxPadding 6
+autonumber
+
+actor Coordinador
+participant "ControlAccesoRBAC\n<<interceptor, ADR-002>>" as RBAC
+participant "FormalizarContratoHandler\n<<Application Service>>" as H
+participant "IEventoRepository\n<<interfaz>>" as ERepo
+participant "Evento\n<<Aggregate Root>>" as Evento
+participant "IUnitOfWork\n<<interfaz, provisional>>" as UoW
+participant "IDespachadorEventos\n<<interfaz>>" as Desp
+database "Base de datos\n(un solo almacén)" as BD
+participant "ManejadorContratoFormalizado\n<<Event Handler>>" as MCF
+participant "ICuentaDePagosRepository\n<<interfaz>>" as CRepo
+participant "CuentaDePagos\n<<Aggregate Root>>" as Cuenta
+participant "ManejadorCambioRegistrado\n<<Event Handler>>" as MCR
+participant "IRegistroAuditoriaRepository\n<<interfaz, solo append>>" as ARepo
+
+Coordinador -> RBAC : formalizarContrato(eventoId,\nmontoAnticipoRecibido, comprobantePagoId)
+activate RBAC
+RBAC -> RBAC : verifica que el rol sea Coordinador\n(actor documentado del CU-03)
+RBAC -> H : manejar(FormalizarContratoCommand)\ncon userId y rol de la sesión
+deactivate RBAC
+activate H
+
+H -> ERepo : obtenerPorId(eventoId)
+ERepo -> BD : leer el agregado Evento
+BD --> ERepo : datos del Evento
+ERepo --> H : Evento
+note right of ERepo
+  La implementación del repositorio
+  vive en infraestructura.
+  El handler solo conoce la interfaz.
+end note
+
+group Transacción 1: agregado Evento
+  H -> Evento : formalizarContrato(montoAnticipoRecibido,\ncomprobantePagoId, userId, rol)
+  activate Evento
+  Evento -> Evento : comprueba las 4 condiciones de BR-07:\naceptación formal, información completa,\nservicios confirmados y anticipo pagado\n(el monto recibido cubre el anticipo pactado)
+  Evento -> Evento : cambia su estado a contrato formalizado\ny registra ContratoFormalizado y CambioRegistrado
+  Evento --> H : contrato formalizado
+  deactivate Evento
+
+  H -> Evento : extraerEventosDeDominio()
+  Evento --> H : [ContratoFormalizado, CambioRegistrado]
+  H -> ERepo : guardar(evento)
+  ERepo -> BD : registrar los cambios del Evento
+  H -> UoW : confirmar()
+  UoW -> BD : commit
+end
+
+H ->> Desp : publicar(ContratoFormalizado, CambioRegistrado)
+H --> Coordinador : Result.exito(ResultadoFormalizacion:\neventoId, estado, fechaFormalizacion)
+deactivate H
+note over Desp
+  Despacho en memoria, después del commit (D1).
+  Cada reacción corre en su propia transacción.
+  No hay transacción que cubra Evento y CuentaDePagos.
+end note
+
+== Reacciones después del commit: consistencia eventual ==
+
+Desp ->> MCF : manejar(ContratoFormalizado:\neventoId, clienteId, subtotal, anticipoPactado,\nanticipoPagado, userId, rol, fechaFormalizacion)
+activate MCF
+group Transacción 2: agregado CuentaDePagos
+  create Cuenta
+  MCF -> Cuenta : <<create>> crear(eventoId, subtotal,\nanticipoPactado, anticipoPagado)
+  MCF -> CRepo : guardar(cuenta)
+  CRepo -> BD : registrar la CuentaDePagos
+  MCF -> UoW : confirmar()
+  UoW -> BD : commit
+end
+deactivate MCF
+
+Desp ->> MCR : manejar(CambioRegistrado:\nuserId, rol, tipo de cambio, fecha)
+activate MCR
+group Transacción 3: registro de auditoría (ADR-003)
+  MCR -> ARepo : agregar(registro de auditoría)
+  ARepo -> BD : insertar fila nueva, sin modificar las anteriores
+  MCR -> UoW : confirmar()
+  UoW -> BD : commit
+end
+deactivate MCR
+
+footer Equipo 16 | Eventos Nova 
+@enduml

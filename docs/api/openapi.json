@@ -1,0 +1,2007 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Eventos Nova API - Componentes de Lógica de Negocios (Equipo 16)",
+    "description": "API REST con Arquitectura Limpia y Domain-Driven Design (DDD) para la gestión de contratos de eventos sociales, control de proveedores con SLA de 48h, modificaciones de alcance, cuentas de pago y auditoría inmutable (ADR-003).",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/eventos": {
+      "post": {
+        "tags": [
+          "Eventos y Contratos"
+        ],
+        "summary": "Crear evento preliminar y cuenta de pagos inicial",
+        "description": "Crea un nuevo Aggregate Root `Evento` en estado `PENDIENTE_ANTICIPO`, valida la capacidad\nde invitados (BR-05: 20 a 300), asigna proveedores iniciales (BR-15: máx. 15),\ninicializa su `CuentaDePagos` y registra la creación en la bitácora de auditoría (ADR-003).",
+        "operationId": "crear_evento_preliminar_eventos_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CrearEventoPreliminarRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventoPreliminarResponseSchema"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseSchema"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseSchema"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseSchema"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/eventos/{evento_id}/proveedores": {
+      "post": {
+        "tags": [
+          "Eventos y Contratos"
+        ],
+        "summary": "Asignar un proveedor al evento (BR-04 / BR-15)",
+        "description": "Asigna un proveedor validando el límite de 15 proveedores activos (BR-15) y el SLA de 48h (BR-04).",
+        "operationId": "asignar_proveedor_evento_eventos__evento_id__proveedores_post",
+        "parameters": [
+          {
+            "name": "evento_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Evento Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AsignarProveedorRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AsignacionProveedorResponseSchema"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseSchema"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseSchema"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/eventos/{evento_id}/formalizar": {
+      "post": {
+        "tags": [
+          "Eventos y Contratos"
+        ],
+        "summary": "Formalizar contrato del evento (CU-03 / BR-07)",
+        "description": "Ejecuta el Caso de Uso CU-03 (`FormalizarContratoHandler`).\nVerifica las 4 condiciones de `FormalizacionContratoSpecification` (BR-07):\n1. Estado `BORRADOR` o `PENDIENTE_ANTICIPO` y fecha futura.\n2. Capacidad entre 20 y 300 invitados (BR-05).\n3. Al menos 1 proveedor `CONFIRMADO`, sin pendientes y máximo 15 activos (BR-15).\n4. Anticipo mínimo pactado cubierto en `CuentaDePagos`.",
+        "operationId": "formalizar_contrato_eventos__evento_id__formalizar_post",
+        "parameters": [
+          {
+            "name": "evento_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Evento Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/FormalizarContratoRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Payload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FormalizarContratoResponseSchema"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseSchema"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseSchema"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/eventos/{evento_id}/cambios-alcance": {
+      "post": {
+        "tags": [
+          "Eventos y Contratos"
+        ],
+        "summary": "Solicitar y procesar cambio de alcance (CU-04 / BR-02, BR-05, BR-12)",
+        "description": "Ejecuta el Caso de Uso CU-04 (`ProcesarCambioAlcanceHandler`).\nValida que el evento esté `CONFIRMADO`, que falten al menos 7 días naturales para la fecha\ndel evento (BR-02 / BR-12) y que el nuevo total de invitados no supere los 300 (BR-05).",
+        "operationId": "solicitar_cambio_alcance_eventos__evento_id__cambios_alcance_post",
+        "parameters": [
+          {
+            "name": "evento_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Evento Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SolicitarCambioAlcanceRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CambioAlcanceResponseSchema"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseSchema"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseSchema"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseSchema"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        }
+      }
+    },
+    "/eventos/evaluar-sla-proveedores": {
+      "post": {
+        "tags": [
+          "Eventos y Contratos"
+        ],
+        "summary": "Ejecutar evaluación de SLA de 48h para proveedores pendientes (BR-04)",
+        "description": "Ejecuta el scheduler de dominio que vence asignaciones con más de 48h sin confirmar (BR-04).",
+        "operationId": "evaluar_sla_proveedores_eventos_evaluar_sla_proveedores_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_evaluar_sla_proveedores_eventos_evaluar_sla_proveedores_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResultadoEvaluacionSLADTO"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/eventos/{evento_id}/proveedores/{proveedor_id}/confirmar": {
+      "post": {
+        "tags": [
+          "Eventos y Contratos"
+        ],
+        "summary": "Confirmar participación de un proveedor dentro del SLA de 48h (US-04 / BR-04)",
+        "description": "Confirma un proveedor asignado validando que no haya expirado la ventana SLA de 48 horas (BR-04).",
+        "operationId": "confirmar_proveedor_evento_eventos__evento_id__proveedores__proveedor_id__confirmar_post",
+        "parameters": [
+          {
+            "name": "evento_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Evento Id"
+            }
+          },
+          {
+            "name": "proveedor_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Proveedor Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/ConfirmarProveedorRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Payload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AsignacionProveedorResponseSchema"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseSchema"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseSchema"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseSchema"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        }
+      }
+    },
+    "/eventos/{evento_id}/finalizar": {
+      "post": {
+        "tags": [
+          "Eventos y Contratos"
+        ],
+        "summary": "Ejecutar y finalizar evento verificando liquidación total (US-08, US-15 / BR-06)",
+        "description": "Valida que la CuentaDePagos esté 100% liquidada (saldo 0.00 MXN, BR-06) y transiciona\nel evento a través de `EN_EJECUCION` hasta el estado terminal `FINALIZADO`.",
+        "operationId": "finalizar_evento_eventos__evento_id__finalizar_post",
+        "parameters": [
+          {
+            "name": "evento_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Evento Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/FinalizarEventoRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Payload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FinalizarEventoResponseSchema"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseSchema"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseSchema"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseSchema"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/eventos/{evento_id}/cancelar": {
+      "post": {
+        "tags": [
+          "Eventos y Contratos"
+        ],
+        "summary": "Cancelar evento y calcular devolución por penalización (US-09 / BR-03)",
+        "description": "Cancela un evento (BR-03 / US-09) y calcula automáticamente el monto de reembolso según\nlos días naturales de anticipación (>30 días: 100% sobre excedente de anticipo;\n15 a 30 días: 50% sobre excedente de anticipo; <15 días: 0% sin reembolso).",
+        "operationId": "cancelar_evento_eventos__evento_id__cancelar_post",
+        "parameters": [
+          {
+            "name": "evento_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Evento Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/CancelarEventoRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Payload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CancelarEventoResponseSchema"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseSchema"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseSchema"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseSchema"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/eventos/{evento_id}/pagos": {
+      "post": {
+        "tags": [
+          "Pagos y Finanzas"
+        ],
+        "summary": "Registrar abono o pago en la cuenta del evento",
+        "description": "Registra un pago sobre el Aggregate Root `CuentaDePagos`, recalcula el saldo pendiente\ny el estado financiero (`ANTICIPO_CUBIERTO`, `PARCIALMENTE_PAGADO`, `LIQUIDADO`),\ny persiste la traza inmutable en `LogAuditoria` (ADR-003).",
+        "operationId": "registrar_pago_evento_eventos__evento_id__pagos_post",
+        "parameters": [
+          {
+            "name": "evento_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Evento Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegistrarPagoRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagoRegistradoResponseSchema"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseSchema"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseSchema"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        }
+      }
+    },
+    "/eventos/{evento_id}/saldo": {
+      "get": {
+        "tags": [
+          "Pagos y Finanzas"
+        ],
+        "summary": "Consultar saldo pendiente y desglose financiero del evento (CU-05)",
+        "description": "Ejecuta el Caso de Uso CU-05 (`ConsultarSaldoPendienteHandler`).",
+        "operationId": "consultar_saldo_pendiente_eventos__evento_id__saldo_get",
+        "parameters": [
+          {
+            "name": "evento_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Evento Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SaldoPendienteResponseSchema"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseSchema"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/eventos/{evento_id}/auditoria": {
+      "get": {
+        "tags": [
+          "Historial de Auditoría (ADR-003)"
+        ],
+        "summary": "Consultar historial inmutable de cambios y auditoría del evento (ADR-003)",
+        "description": "Recupera todos los registros inmutables (`LogAuditoria`) asociados al ciclo de vida\ndel evento, incluyendo cambios de estado, formalización, modificaciones de alcance,\npagos y vencimientos de SLA.",
+        "operationId": "consultar_historial_auditoria_eventos__evento_id__auditoria_get",
+        "parameters": [
+          {
+            "name": "evento_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Evento Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HistorialAuditoriaResponseSchema"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseSchema"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "tags": [
+          "Infraestructura"
+        ],
+        "summary": "Verificar estado del servicio",
+        "operationId": "health_check_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object",
+                  "title": "Response Health Check Health Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AsignacionProveedorResponseSchema": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "proveedor_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Proveedor Id"
+          },
+          "nombre_servicio": {
+            "type": "string",
+            "title": "Nombre Servicio"
+          },
+          "estado": {
+            "type": "string",
+            "title": "Estado"
+          },
+          "fecha_asignacion": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Fecha Asignacion"
+          },
+          "fecha_limite_confirmacion": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Fecha Limite Confirmacion"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "proveedor_id",
+          "nombre_servicio",
+          "estado",
+          "fecha_asignacion",
+          "fecha_limite_confirmacion"
+        ],
+        "title": "AsignacionProveedorResponseSchema"
+      },
+      "AsignarProveedorRequest": {
+        "properties": {
+          "proveedor_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Proveedor Id"
+          },
+          "nombre_servicio": {
+            "type": "string",
+            "maxLength": 150,
+            "minLength": 2,
+            "title": "Nombre Servicio"
+          },
+          "confirmar_inmediatamente": {
+            "type": "boolean",
+            "title": "Confirmar Inmediatamente",
+            "default": false
+          },
+          "usuario_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Usuario Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "proveedor_id",
+          "nombre_servicio"
+        ],
+        "title": "AsignarProveedorRequest"
+      },
+      "Body_evaluar_sla_proveedores_eventos_evaluar_sla_proveedores_post": {
+        "properties": {
+          "fecha_corte": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fecha Corte"
+          }
+        },
+        "type": "object",
+        "title": "Body_evaluar_sla_proveedores_eventos_evaluar_sla_proveedores_post"
+      },
+      "CambioAlcanceResponseSchema": {
+        "properties": {
+          "evento_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Evento Id"
+          },
+          "cotizacion_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Cotizacion Id"
+          },
+          "invitados_anteriores": {
+            "type": "integer",
+            "title": "Invitados Anteriores"
+          },
+          "invitados_actualizados": {
+            "type": "integer",
+            "title": "Invitados Actualizados"
+          },
+          "costo_adicional": {
+            "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Costo Adicional"
+          },
+          "nuevo_monto_total_contrato": {
+            "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Nuevo Monto Total Contrato"
+          },
+          "nuevo_saldo_pendiente": {
+            "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Nuevo Saldo Pendiente"
+          },
+          "estado_pago_actualizado": {
+            "type": "string",
+            "title": "Estado Pago Actualizado"
+          },
+          "auditoria_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Auditoria Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "evento_id",
+          "cotizacion_id",
+          "invitados_anteriores",
+          "invitados_actualizados",
+          "costo_adicional",
+          "nuevo_monto_total_contrato",
+          "nuevo_saldo_pendiente",
+          "estado_pago_actualizado",
+          "auditoria_id"
+        ],
+        "title": "CambioAlcanceResponseSchema"
+      },
+      "CancelarEventoRequest": {
+        "properties": {
+          "fecha_cancelacion": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fecha Cancelacion",
+            "description": "Fecha de cancelación (UTC) para evaluar ventana de reembolso BR-03 (>30d, 15..30d, <15d)"
+          },
+          "motivo": {
+            "type": "string",
+            "maxLength": 255,
+            "title": "Motivo",
+            "default": "Cancelación solicitada por el cliente"
+          },
+          "usuario_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Usuario Id"
+          }
+        },
+        "type": "object",
+        "title": "CancelarEventoRequest"
+      },
+      "CancelarEventoResponseSchema": {
+        "properties": {
+          "evento_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Evento Id"
+          },
+          "estado_evento_anterior": {
+            "type": "string",
+            "title": "Estado Evento Anterior"
+          },
+          "estado_evento_actual": {
+            "type": "string",
+            "title": "Estado Evento Actual"
+          },
+          "estado_pago_actual": {
+            "type": "string",
+            "title": "Estado Pago Actual"
+          },
+          "pagos_realizados": {
+            "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Pagos Realizados"
+          },
+          "anticipo_retenido": {
+            "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Anticipo Retenido"
+          },
+          "monto_devolucion": {
+            "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Monto Devolucion"
+          },
+          "moneda": {
+            "type": "string",
+            "title": "Moneda"
+          },
+          "auditoria_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Auditoria Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "evento_id",
+          "estado_evento_anterior",
+          "estado_evento_actual",
+          "estado_pago_actual",
+          "pagos_realizados",
+          "anticipo_retenido",
+          "monto_devolucion",
+          "moneda",
+          "auditoria_id"
+        ],
+        "title": "CancelarEventoResponseSchema"
+      },
+      "ConfirmarProveedorRequest": {
+        "properties": {
+          "fecha_confirmacion": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fecha Confirmacion",
+            "description": "Fecha de confirmación opcional (UTC) para verificar SLA de 48h (BR-04)"
+          },
+          "usuario_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Usuario Id"
+          }
+        },
+        "type": "object",
+        "title": "ConfirmarProveedorRequest"
+      },
+      "CrearEventoPreliminarRequest": {
+        "properties": {
+          "cliente_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Cliente Id"
+          },
+          "fecha_evento": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Fecha Evento"
+          },
+          "cantidad_invitados": {
+            "type": "integer",
+            "title": "Cantidad Invitados",
+            "description": "Cantidad de invitados (BR-05: 20 a 300)"
+          },
+          "subtotal_contrato": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              }
+            ],
+            "title": "Subtotal Contrato",
+            "description": "Subtotal base del contrato"
+          },
+          "anticipo_pactado": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              }
+            ],
+            "title": "Anticipo Pactado",
+            "description": "Monto mínimo de anticipo para formalizar"
+          },
+          "moneda": {
+            "type": "string",
+            "maxLength": 3,
+            "minLength": 3,
+            "title": "Moneda",
+            "default": "MXN"
+          },
+          "proveedores_iniciales": {
+            "items": {
+              "$ref": "#/components/schemas/ProveedorInicialInputSchema"
+            },
+            "type": "array",
+            "title": "Proveedores Iniciales"
+          },
+          "usuario_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Usuario Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "cliente_id",
+          "fecha_evento",
+          "cantidad_invitados",
+          "subtotal_contrato",
+          "anticipo_pactado"
+        ],
+        "title": "CrearEventoPreliminarRequest",
+        "description": "Payload para registrar un evento preliminar junto con su cuenta de pagos inicial.",
+        "example": {
+          "anticipo_pactado": "36000.00",
+          "cantidad_invitados": 150,
+          "cliente_id": "11111111-2222-3333-4444-555555555555",
+          "fecha_evento": "2026-12-20T19:00:00Z",
+          "moneda": "MXN",
+          "proveedores_iniciales": [
+            {
+              "confirmado": true,
+              "nombre_servicio": "Banquete Gourmet Nova",
+              "proveedor_id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+            }
+          ],
+          "subtotal_contrato": "120000.00",
+          "usuario_id": "99999999-8888-7777-6666-555555555555"
+        }
+      },
+      "ErrorResponseSchema": {
+        "properties": {
+          "codigo": {
+            "type": "string",
+            "title": "Codigo",
+            "description": "Código identificador de la excepción de dominio"
+          },
+          "mensaje": {
+            "type": "string",
+            "title": "Mensaje",
+            "description": "Descripción legible de la regla de negocio infringida"
+          },
+          "detalles": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detalles",
+            "description": "Lista detallada de motivos si aplica"
+          }
+        },
+        "type": "object",
+        "required": [
+          "codigo",
+          "mensaje"
+        ],
+        "title": "ErrorResponseSchema",
+        "description": "Estructura estándar de error devuelta por la API ante violaciones de dominio."
+      },
+      "EventoPreliminarResponseSchema": {
+        "properties": {
+          "evento_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Evento Id"
+          },
+          "cuenta_pagos_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Cuenta Pagos Id"
+          },
+          "cliente_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Cliente Id"
+          },
+          "fecha_evento": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Fecha Evento"
+          },
+          "cantidad_invitados": {
+            "type": "integer",
+            "title": "Cantidad Invitados"
+          },
+          "estado_evento": {
+            "type": "string",
+            "title": "Estado Evento"
+          },
+          "estado_pago": {
+            "type": "string",
+            "title": "Estado Pago"
+          },
+          "subtotal_contrato": {
+            "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Subtotal Contrato"
+          },
+          "anticipo_pactado": {
+            "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Anticipo Pactado"
+          },
+          "saldo_pendiente": {
+            "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Saldo Pendiente"
+          },
+          "moneda": {
+            "type": "string",
+            "title": "Moneda"
+          },
+          "proveedores": {
+            "items": {
+              "$ref": "#/components/schemas/AsignacionProveedorResponseSchema"
+            },
+            "type": "array",
+            "title": "Proveedores"
+          },
+          "auditoria_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Auditoria Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "evento_id",
+          "cuenta_pagos_id",
+          "cliente_id",
+          "fecha_evento",
+          "cantidad_invitados",
+          "estado_evento",
+          "estado_pago",
+          "subtotal_contrato",
+          "anticipo_pactado",
+          "saldo_pendiente",
+          "moneda",
+          "proveedores",
+          "auditoria_id"
+        ],
+        "title": "EventoPreliminarResponseSchema"
+      },
+      "FinalizarEventoRequest": {
+        "properties": {
+          "usuario_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Usuario Id"
+          }
+        },
+        "type": "object",
+        "title": "FinalizarEventoRequest"
+      },
+      "FinalizarEventoResponseSchema": {
+        "properties": {
+          "evento_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Evento Id"
+          },
+          "estado_anterior": {
+            "type": "string",
+            "title": "Estado Anterior"
+          },
+          "estado_actual": {
+            "type": "string",
+            "title": "Estado Actual"
+          },
+          "estado_pago": {
+            "type": "string",
+            "title": "Estado Pago"
+          },
+          "total_pagado": {
+            "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Total Pagado"
+          },
+          "moneda": {
+            "type": "string",
+            "title": "Moneda"
+          },
+          "auditoria_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Auditoria Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "evento_id",
+          "estado_anterior",
+          "estado_actual",
+          "estado_pago",
+          "total_pagado",
+          "moneda",
+          "auditoria_id"
+        ],
+        "title": "FinalizarEventoResponseSchema"
+      },
+      "FormalizarContratoRequest": {
+        "properties": {
+          "usuario_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Usuario Id",
+            "description": "UUID del operador o cliente que formaliza"
+          },
+          "fecha_operacion": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fecha Operacion",
+            "description": "Fecha de referencia opcional (UTC) para pruebas deterministas"
+          }
+        },
+        "type": "object",
+        "title": "FormalizarContratoRequest"
+      },
+      "FormalizarContratoResponseSchema": {
+        "properties": {
+          "evento_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Evento Id"
+          },
+          "estado_anterior": {
+            "type": "string",
+            "title": "Estado Anterior"
+          },
+          "estado_actual": {
+            "type": "string",
+            "title": "Estado Actual"
+          },
+          "monto_total_contrato": {
+            "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Monto Total Contrato"
+          },
+          "saldo_pendiente": {
+            "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Saldo Pendiente"
+          },
+          "moneda": {
+            "type": "string",
+            "title": "Moneda"
+          },
+          "auditoria_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Auditoria Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "evento_id",
+          "estado_anterior",
+          "estado_actual",
+          "monto_total_contrato",
+          "saldo_pendiente",
+          "moneda",
+          "auditoria_id"
+        ],
+        "title": "FormalizarContratoResponseSchema"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "HistorialAuditoriaResponseSchema": {
+        "properties": {
+          "evento_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Evento Id"
+          },
+          "total_registros": {
+            "type": "integer",
+            "title": "Total Registros"
+          },
+          "registros": {
+            "items": {
+              "$ref": "#/components/schemas/LogAuditoriaResponseSchema"
+            },
+            "type": "array",
+            "title": "Registros"
+          }
+        },
+        "type": "object",
+        "required": [
+          "evento_id",
+          "total_registros",
+          "registros"
+        ],
+        "title": "HistorialAuditoriaResponseSchema"
+      },
+      "LogAuditoriaResponseSchema": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "entidad_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Entidad Id"
+          },
+          "tipo_entidad": {
+            "type": "string",
+            "title": "Tipo Entidad"
+          },
+          "accion": {
+            "type": "string",
+            "title": "Accion"
+          },
+          "estado_anterior": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Estado Anterior"
+          },
+          "estado_nuevo": {
+            "type": "string",
+            "title": "Estado Nuevo"
+          },
+          "detalles": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Detalles"
+          },
+          "usuario_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Usuario Id"
+          },
+          "fecha_registro": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Fecha Registro"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "entidad_id",
+          "tipo_entidad",
+          "accion",
+          "estado_anterior",
+          "estado_nuevo",
+          "detalles",
+          "usuario_id",
+          "fecha_registro"
+        ],
+        "title": "LogAuditoriaResponseSchema"
+      },
+      "PagoRegistradoResponseSchema": {
+        "properties": {
+          "evento_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Evento Id"
+          },
+          "cuenta_pagos_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Cuenta Pagos Id"
+          },
+          "monto_abonado": {
+            "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Monto Abonado"
+          },
+          "pagos_acumulados": {
+            "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Pagos Acumulados"
+          },
+          "saldo_pendiente": {
+            "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Saldo Pendiente"
+          },
+          "estado_pago_anterior": {
+            "type": "string",
+            "title": "Estado Pago Anterior"
+          },
+          "estado_pago_actual": {
+            "type": "string",
+            "title": "Estado Pago Actual"
+          },
+          "anticipo_cubierto": {
+            "type": "boolean",
+            "title": "Anticipo Cubierto"
+          },
+          "esta_liquidado": {
+            "type": "boolean",
+            "title": "Esta Liquidado"
+          },
+          "moneda": {
+            "type": "string",
+            "title": "Moneda"
+          },
+          "auditoria_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Auditoria Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "evento_id",
+          "cuenta_pagos_id",
+          "monto_abonado",
+          "pagos_acumulados",
+          "saldo_pendiente",
+          "estado_pago_anterior",
+          "estado_pago_actual",
+          "anticipo_cubierto",
+          "esta_liquidado",
+          "moneda",
+          "auditoria_id"
+        ],
+        "title": "PagoRegistradoResponseSchema"
+      },
+      "ProveedorInicialInputSchema": {
+        "properties": {
+          "proveedor_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Proveedor Id",
+            "description": "UUID del proveedor en el catálogo"
+          },
+          "nombre_servicio": {
+            "type": "string",
+            "maxLength": 150,
+            "minLength": 2,
+            "title": "Nombre Servicio",
+            "description": "Nombre del servicio contratado"
+          },
+          "confirmado": {
+            "type": "boolean",
+            "title": "Confirmado",
+            "description": "Indica si el proveedor ya confirmó su asignación",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "proveedor_id",
+          "nombre_servicio"
+        ],
+        "title": "ProveedorInicialInputSchema",
+        "description": "Datos para asignar un proveedor durante la creación o preparación de un evento."
+      },
+      "ProveedorVencidoDTO": {
+        "properties": {
+          "evento_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Evento Id"
+          },
+          "asignacion_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Asignacion Id"
+          },
+          "proveedor_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Proveedor Id"
+          },
+          "nombre_servicio": {
+            "type": "string",
+            "title": "Nombre Servicio"
+          },
+          "fecha_limite_confirmacion": {
+            "type": "string",
+            "title": "Fecha Limite Confirmacion"
+          }
+        },
+        "type": "object",
+        "required": [
+          "evento_id",
+          "asignacion_id",
+          "proveedor_id",
+          "nombre_servicio",
+          "fecha_limite_confirmacion"
+        ],
+        "title": "ProveedorVencidoDTO",
+        "description": "Detalle de una asignación de proveedor marcada como VENCIDO por SLA."
+      },
+      "RegistrarPagoRequest": {
+        "properties": {
+          "monto": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              }
+            ],
+            "title": "Monto",
+            "description": "Monto del abono a registrar"
+          },
+          "moneda": {
+            "type": "string",
+            "maxLength": 3,
+            "minLength": 3,
+            "title": "Moneda",
+            "default": "MXN"
+          },
+          "referencia_pago": {
+            "type": "string",
+            "maxLength": 100,
+            "title": "Referencia Pago",
+            "default": "PAGO_DIRECTO"
+          },
+          "usuario_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Usuario Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "monto"
+        ],
+        "title": "RegistrarPagoRequest",
+        "example": {
+          "moneda": "MXN",
+          "monto": "36000.00",
+          "referencia_pago": "SPEI-984512",
+          "usuario_id": "99999999-8888-7777-6666-555555555555"
+        }
+      },
+      "ResultadoEvaluacionSLADTO": {
+        "properties": {
+          "fecha_corte": {
+            "type": "string",
+            "title": "Fecha Corte"
+          },
+          "eventos_evaluados": {
+            "type": "integer",
+            "title": "Eventos Evaluados"
+          },
+          "total_asignaciones_vencidas": {
+            "type": "integer",
+            "title": "Total Asignaciones Vencidas"
+          },
+          "proveedores_vencidos": {
+            "items": {
+              "$ref": "#/components/schemas/ProveedorVencidoDTO"
+            },
+            "type": "array",
+            "title": "Proveedores Vencidos"
+          }
+        },
+        "type": "object",
+        "required": [
+          "fecha_corte",
+          "eventos_evaluados",
+          "total_asignaciones_vencidas",
+          "proveedores_vencidos"
+        ],
+        "title": "ResultadoEvaluacionSLADTO",
+        "description": "Resumen de ejecución del job EvaluarSLAProveedoresScheduler (BR-04)."
+      },
+      "SaldoPendienteResponseSchema": {
+        "properties": {
+          "evento_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Evento Id"
+          },
+          "cuenta_pagos_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Cuenta Pagos Id"
+          },
+          "estado_evento": {
+            "type": "string",
+            "title": "Estado Evento"
+          },
+          "estado_pago": {
+            "type": "string",
+            "title": "Estado Pago"
+          },
+          "subtotal_base": {
+            "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Subtotal Base"
+          },
+          "total_incrementos": {
+            "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Total Incrementos"
+          },
+          "monto_total_actualizado": {
+            "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Monto Total Actualizado"
+          },
+          "anticipo_pactado": {
+            "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Anticipo Pactado"
+          },
+          "pagos_realizados": {
+            "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Pagos Realizados"
+          },
+          "saldo_pendiente": {
+            "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Saldo Pendiente"
+          },
+          "moneda": {
+            "type": "string",
+            "title": "Moneda"
+          },
+          "anticipo_cubierto": {
+            "type": "boolean",
+            "title": "Anticipo Cubierto"
+          },
+          "esta_liquidado": {
+            "type": "boolean",
+            "title": "Esta Liquidado"
+          }
+        },
+        "type": "object",
+        "required": [
+          "evento_id",
+          "cuenta_pagos_id",
+          "estado_evento",
+          "estado_pago",
+          "subtotal_base",
+          "total_incrementos",
+          "monto_total_actualizado",
+          "anticipo_pactado",
+          "pagos_realizados",
+          "saldo_pendiente",
+          "moneda",
+          "anticipo_cubierto",
+          "esta_liquidado"
+        ],
+        "title": "SaldoPendienteResponseSchema"
+      },
+      "SolicitarCambioAlcanceRequest": {
+        "properties": {
+          "descripcion": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 5,
+            "title": "Descripcion"
+          },
+          "invitados_adicionales": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Invitados Adicionales",
+            "description": "Invitados adicionales a sumar al aforo actual"
+          },
+          "costo_adicional": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              }
+            ],
+            "title": "Costo Adicional",
+            "description": "Costo monetario del incremento"
+          },
+          "moneda": {
+            "type": "string",
+            "maxLength": 3,
+            "minLength": 3,
+            "title": "Moneda",
+            "default": "MXN"
+          },
+          "porcentaje_anticipo_adicional": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 100.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              }
+            ],
+            "title": "Porcentaje Anticipo Adicional",
+            "default": "0.00"
+          },
+          "usuario_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Usuario Id"
+          },
+          "fecha_solicitud": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fecha Solicitud"
+          }
+        },
+        "type": "object",
+        "required": [
+          "descripcion",
+          "invitados_adicionales",
+          "costo_adicional"
+        ],
+        "title": "SolicitarCambioAlcanceRequest",
+        "example": {
+          "costo_adicional": "25000.00",
+          "descripcion": "Ampliación de 30 invitados adicionales y barra de postres",
+          "invitados_adicionales": 30,
+          "moneda": "MXN",
+          "porcentaje_anticipo_adicional": "0.00",
+          "usuario_id": "99999999-8888-7777-6666-555555555555"
+        }
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    }
+  }
+}

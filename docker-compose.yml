@@ -1,0 +1,51 @@
+# docker-compose.yml
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: eventos_nova_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-nova_admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-nova_secret_local}
+      POSTGRES_DB: ${POSTGRES_DB:-eventos_nova}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-nova_admin} -d ${POSTGRES_DB:-eventos_nova}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: eventos_nova_api
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-nova_admin}:${POSTGRES_PASSWORD:-nova_secret_local}@db:5432/${POSTGRES_DB:-eventos_nova}
+      SECRET_KEY: ${SECRET_KEY:-dev_secret_key_change_in_production}
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    ports:
+      - "8000:8000"
+    command: ["uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+
+  tests:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: eventos_nova_tests
+    environment:
+      DATABASE_URL: "sqlite:///:memory:"
+      ENVIRONMENT: testing
+      LOG_LEVEL: WARNING
+    command: ["pytest", "-v", "--cov=src", "--cov-report=term-missing", "--cov-fail-under=80"]
+
+volumes:
+  postgres_data:
