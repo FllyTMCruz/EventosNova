@@ -142,9 +142,9 @@
     </div>
     <div class="links">
       <span>Evento Activo: <strong id="lblEventoId">Ninguno</strong></span>
-      <a href="http://127.0.0.1:8000/docs" target="_blank">[Abrir Swagger UI Oficial (/docs)]</a>
-      <a href="http://127.0.0.1:8000/openapi.json" target="_blank">[OpenAPI JSON]</a>
-      <a href="http://127.0.0.1:8000/health" target="_blank">[Health]</a>
+      <a id="lnkDocs" href="/docs" target="_blank">[Abrir Swagger UI Oficial (/docs)]</a>
+      <a id="lnkOpenApi" href="/openapi.json" target="_blank">[OpenAPI JSON]</a>
+      <a id="lnkHealth" href="/health" target="_blank">[Health]</a>
     </div>
   </header>
 
@@ -279,6 +279,11 @@
     let eventoActualId = null;
     let ultimoProveedorPendienteId = null;
     const API_BASE = window.location.protocol === 'file:' ? 'http://127.0.0.1:8000' : '';
+    if (API_BASE) {
+      document.getElementById('lnkDocs').href = `${API_BASE}/docs`;
+      document.getElementById('lnkOpenApi').href = `${API_BASE}/openapi.json`;
+      document.getElementById('lnkHealth').href = `${API_BASE}/health`;
+    }
 
     function uuid4() {
       return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {

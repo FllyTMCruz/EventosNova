@@ -1,0 +1,17 @@
+# render.yaml - Blueprint de Despliegue Automático en Render.com
+services:
+  - type: web
+    name: eventos-nova-equipo16
+    runtime: docker
+    plan: free
+    autoDeploy: true
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        value: "sqlite:///./eventos_nova.db"
+      - key: ENVIRONMENT
+        value: "production"
+      - key: LOG_LEVEL
+        value: "INFO"
+      - key: SECRET_KEY
+        generateValue: true
