@@ -10,6 +10,17 @@
 
 ---
 
+## 🌐 Enlaces Oficiales del Proyecto y Despliegue en Producción (Render Cloud)
+
+* **Repositorio GitHub:** [https://github.com/FllyTMCruz/EventosNova](https://github.com/FllyTMCruz/EventosNova)
+* **Sistema Desplegado (Interfaz de Prueba en Vivo):** [https://eventos-nova-equipo16.onrender.com/](https://eventos-nova-equipo16.onrender.com/)
+* **Swagger UI Activo en Producción (`/docs`):** [https://eventos-nova-equipo16.onrender.com/docs](https://eventos-nova-equipo16.onrender.com/docs)
+* **ReDoc Activo en Producción (`/redoc`):** [https://eventos-nova-equipo16.onrender.com/redoc](https://eventos-nova-equipo16.onrender.com/redoc)
+* **Especificación OpenAPI 3.1.0 en Vivo (`/openapi.json`):** [https://eventos-nova-equipo16.onrender.com/openapi.json](https://eventos-nova-equipo16.onrender.com/openapi.json)
+* **Health Check en Producción (`/health`):** [https://eventos-nova-equipo16.onrender.com/health](https://eventos-nova-equipo16.onrender.com/health)
+
+---
+
 ## 1. Estructura del Proyecto y Trazabilidad de Entregables
 
 El repositorio cumple estrictamente con la estructura mínima requerida para el Producto Integrador de Aprendizaje (PIA):

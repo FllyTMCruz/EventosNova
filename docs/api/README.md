@@ -5,9 +5,16 @@
 
 ---
 
-## 1. Acceso a la Documentación Interactiva
+## 1. Acceso a la Documentación Interactiva (Producción y Local)
 
-Cuando el servidor FastAPI se encuentra en ejecución (`uvicorn src.api.main:app --reload --port 8000` o vía Docker Compose), la documentación interactiva está disponible en:
+### ☁️ Despliegue en Producción (Render Cloud)
+* **Swagger UI en Producción:** [https://eventos-nova-equipo16.onrender.com/docs](https://eventos-nova-equipo16.onrender.com/docs)
+* **ReDoc en Producción:** [https://eventos-nova-equipo16.onrender.com/redoc](https://eventos-nova-equipo16.onrender.com/redoc)
+* **Esquema OpenAPI JSON en Producción:** [https://eventos-nova-equipo16.onrender.com/openapi.json](https://eventos-nova-equipo16.onrender.com/openapi.json)
+* **Consola Minimalista (Interfaz de Prueba):** [https://eventos-nova-equipo16.onrender.com/interfaz-prueba](https://eventos-nova-equipo16.onrender.com/interfaz-prueba)
+
+### 💻 Ejecución Local
+Cuando el servidor FastAPI se encuentra en ejecución local (`uvicorn src.api.main:app --reload --port 8000` o vía Docker Compose), la documentación interactiva está disponible en:
 * **Swagger UI:** `http://localhost:8000/docs`
 * **ReDoc:** `http://localhost:8000/redoc`
 * **Esquema JSON en vivo:** `http://localhost:8000/openapi.json`
