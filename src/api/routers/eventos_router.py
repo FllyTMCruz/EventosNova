@@ -2,29 +2,23 @@
 from datetime import datetime, timezone
 from typing import Optional
 from uuid import UUID
-from fastapi import APIRouter, Body, Depends, status
+from fastapi import APIRouter, Body, Depends, Path, Response, status
 from src.api.dependencies import get_uow
 from src.api.schemas import (
-    AsignacionProveedorResponseSchema,
     AsignarProveedorRequest,
-    CambioAlcanceResponseSchema,
     CancelarEventoRequest,
-    CancelarEventoResponseSchema,
     ConfirmarProveedorRequest,
     CrearEventoPreliminarRequest,
     ErrorResponseSchema,
-    EventoPreliminarResponseSchema,
     FinalizarEventoRequest,
-    FinalizarEventoResponseSchema,
     FormalizarContratoRequest,
-    FormalizarContratoResponseSchema,
+    MensajeResponseSchema,
     SolicitarCambioAlcanceRequest,
 )
 from src.application.dtos.comandos import (
     FormalizarContratoCommand,
     ProcesarCambioAlcanceCommand,
 )
-from src.application.dtos.consultas import ResultadoEvaluacionSLADTO
 from src.application.use_cases.evaluar_sla_proveedores import (
     EvaluarSLAProveedoresScheduler,
 )
@@ -43,12 +37,33 @@ from src.domain.value_objects.monto_contractual import MontoContractual
 
 router = APIRouter(prefix="/eventos", tags=["Eventos y Contratos"])
 
+# Identificadores de ejemplo predeterminados en Swagger para que el usuario no tenga que copiar IDs manualmente
+SWAGGER_EVENTO_EJEMPLO = UUID("11111111-1111-1111-1111-111111111111")
+SWAGGER_PROVEEDOR_EJEMPLO = UUID("22222222-2222-2222-2222-222222222222")
+
+_ULTIMO_EVENTO_ID: Optional[UUID] = None
+_ULTIMO_PROVEEDOR_ID: Optional[UUID] = None
+
+
+def resolver_evento_id(evento_id: UUID) -> UUID:
+    """Si el usuario ejecuta desde Swagger con el ID de ejemplo, usa automáticamente el último evento creado."""
+    if evento_id == SWAGGER_EVENTO_EJEMPLO and _ULTIMO_EVENTO_ID is not None:
+        return _ULTIMO_EVENTO_ID
+    return evento_id
+
+
+def resolver_proveedor_id(proveedor_id: UUID) -> UUID:
+    """Si el usuario ejecuta desde Swagger con el ID de ejemplo, usa el último proveedor asignado."""
+    if proveedor_id == SWAGGER_PROVEEDOR_EJEMPLO and _ULTIMO_PROVEEDOR_ID is not None:
+        return _ULTIMO_PROVEEDOR_ID
+    return proveedor_id
+
 
 @router.post(
     "",
-    response_model=EventoPreliminarResponseSchema,
+    response_model=MensajeResponseSchema,
     status_code=status.HTTP_201_CREATED,
-    summary="Crear evento preliminar y cuenta de pagos inicial",
+    summary="Registrar un nuevo evento y generar su cotización inicial",
     responses={
         400: {"model": ErrorResponseSchema},
         409: {"model": ErrorResponseSchema},
@@ -57,13 +72,14 @@ router = APIRouter(prefix="/eventos", tags=["Eventos y Contratos"])
 )
 def crear_evento_preliminar(
     payload: CrearEventoPreliminarRequest,
+    response: Response,
     uow: IUnitOfWork = Depends(get_uow),
-) -> EventoPreliminarResponseSchema:
+) -> MensajeResponseSchema:
     """
-    Crea un nuevo Aggregate Root `Evento` en estado `PENDIENTE_ANTICIPO`, valida la capacidad
-    de invitados (BR-05: 20 a 300), asigna proveedores iniciales (BR-15: máx. 15),
-    inicializa su `CuentaDePagos` y registra la creación en la bitácora de auditoría (ADR-003).
+    Registra un nuevo evento validando el número de invitados y los proveedores iniciales,
+    y devuelve únicamente un mensaje claro y fácil de entender para el usuario.
     """
+    global _ULTIMO_EVENTO_ID, _ULTIMO_PROVEEDOR_ID
     ahora = datetime.now(timezone.utc)
     moneda = payload.moneda.upper()
 
@@ -82,6 +98,7 @@ def crear_evento_preliminar(
                 nombre_servicio=prov.nombre_servicio,
                 fecha_asignacion=ahora,
             )
+            _ULTIMO_PROVEEDOR_ID = prov.proveedor_id
             if prov.confirmado:
                 asignacion.confirmar(fecha_confirmacion=ahora)
 
@@ -118,55 +135,53 @@ def crear_evento_preliminar(
         uow.auditoria.registrar(log_auditoria)
         uow.commit()
 
-        return EventoPreliminarResponseSchema(
-            evento_id=evento.id,
-            cuenta_pagos_id=cuenta_pagos.id,
-            cliente_id=evento.cliente_id,
-            fecha_evento=evento.fecha_evento,
-            cantidad_invitados=evento.cantidad_invitados,
-            estado_evento=evento.estado.value,
-            estado_pago=cuenta_pagos.estado_pago.value,
-            subtotal_contrato=monto_vo.subtotal.monto,
-            anticipo_pactado=monto_vo.anticipo_pactado.monto,
-            saldo_pendiente=monto_vo.calcular_saldo_pendiente().monto,
-            moneda=moneda,
-            proveedores=[
-                AsignacionProveedorResponseSchema(
-                    id=a.id,
-                    proveedor_id=a.proveedor_id,
-                    nombre_servicio=a.nombre_servicio,
-                    estado=a.estado.value,
-                    fecha_asignacion=a.fecha_asignacion,
-                    fecha_limite_confirmacion=a.fecha_limite_confirmacion,
-                )
-                for a in evento.asignaciones_proveedores
-            ],
-            auditoria_id=log_auditoria.id,
+        _ULTIMO_EVENTO_ID = evento.id
+        response.headers["X-Evento-Id"] = str(evento.id)
+
+        # Mensaje informativo y claro para un usuario común, sin mostrar IDs ni códigos técnicos
+        fecha_legible = evento.fecha_evento.strftime("%d/%m/%Y")
+        total_prov = len(evento.asignaciones_proveedores)
+        sub_txt = f"${monto_vo.subtotal.monto:,.2f} {moneda}"
+        ant_txt = f"${monto_vo.anticipo_pactado.monto:,.2f} {moneda}"
+        return MensajeResponseSchema(
+            message=(
+                f"¡Su evento para {evento.cantidad_invitados} invitados programado para el {fecha_legible} "
+                f"ha sido registrado con éxito! Se incluyeron {total_prov} servicio(s) de proveedores y el "
+                f"costo total es de {sub_txt}. Para confirmar y formalizar su contrato, solo falta "
+                f"realizar el pago del anticipo por {ant_txt}."
+            )
         )
 
 
 @router.post(
     "/{evento_id}/proveedores",
-    response_model=AsignacionProveedorResponseSchema,
+    response_model=MensajeResponseSchema,
     status_code=status.HTTP_201_CREATED,
-    summary="Asignar un proveedor al evento (BR-04 / BR-15)",
+    summary="Agregar un proveedor de servicios al evento",
     responses={
         404: {"model": ErrorResponseSchema},
         409: {"model": ErrorResponseSchema},
     },
 )
 def asignar_proveedor_evento(
-    evento_id: UUID,
+    response: Response,
     payload: AsignarProveedorRequest,
+    evento_id: UUID = Path(
+        ...,
+        examples=[str(SWAGGER_EVENTO_EJEMPLO)],
+        description="Identificador del evento (en Swagger puede dejar el valor de ejemplo)",
+    ),
     uow: IUnitOfWork = Depends(get_uow),
-) -> AsignacionProveedorResponseSchema:
-    """Asigna un proveedor validando el límite de 15 proveedores activos (BR-15) y el SLA de 48h (BR-04)."""
+) -> MensajeResponseSchema:
+    """Asigna un proveedor al evento e informa al usuario en lenguaje sencillo sobre su estado."""
+    global _ULTIMO_PROVEEDOR_ID
+    evento_id_real = resolver_evento_id(evento_id)
     ahora = datetime.now(timezone.utc)
 
     with uow:
-        evento = uow.eventos.obtener_por_id(evento_id)
+        evento = uow.eventos.obtener_por_id(evento_id_real)
         if evento is None:
-            raise EntidadNoEncontradaException(tipo_entidad="Evento", identificador=str(evento_id))
+            raise EntidadNoEncontradaException(tipo_entidad="Evento", identificador=str(evento_id_real))
 
         asignacion = evento.asignar_proveedor(
             proveedor_id=payload.proveedor_id,
@@ -195,64 +210,73 @@ def asignar_proveedor_evento(
         uow.auditoria.registrar(log)
         uow.commit()
 
-        return AsignacionProveedorResponseSchema(
-            id=asignacion.id,
-            proveedor_id=asignacion.proveedor_id,
-            nombre_servicio=asignacion.nombre_servicio,
-            estado=asignacion.estado.value,
-            fecha_asignacion=asignacion.fecha_asignacion,
-            fecha_limite_confirmacion=asignacion.fecha_limite_confirmacion,
-        )
+        _ULTIMO_PROVEEDOR_ID = asignacion.proveedor_id
+        response.headers["X-Proveedor-Id"] = str(asignacion.proveedor_id)
+
+        # Mensaje claro indicando si el proveedor ya quedó confirmado o tiene 48 horas para responder
+        if payload.confirmar_inmediatamente:
+            texto = (
+                f"El servicio de '{asignacion.nombre_servicio}' fue agregado y confirmado "
+                "exitosamente para su evento."
+            )
+        else:
+            texto = (
+                f"El proveedor del servicio '{asignacion.nombre_servicio}' ha sido agregado a su evento. "
+                "A partir de este momento cuenta con un plazo máximo de 48 horas para confirmar su participación."
+            )
+        return MensajeResponseSchema(message=texto)
 
 
 @router.post(
     "/{evento_id}/formalizar",
-    response_model=FormalizarContratoResponseSchema,
+    response_model=MensajeResponseSchema,
     status_code=status.HTTP_200_OK,
-    summary="Formalizar contrato del evento (CU-03 / BR-07)",
+    summary="Confirmar y formalizar el contrato del evento",
     responses={
         404: {"model": ErrorResponseSchema},
         409: {"model": ErrorResponseSchema},
     },
 )
 def formalizar_contrato(
-    evento_id: UUID,
+    evento_id: UUID = Path(
+        ...,
+        examples=[str(SWAGGER_EVENTO_EJEMPLO)],
+        description="Identificador del evento (en Swagger puede dejar el valor de ejemplo)",
+    ),
     payload: Optional[FormalizarContratoRequest] = Body(default=None),
     uow: IUnitOfWork = Depends(get_uow),
-) -> FormalizarContratoResponseSchema:
+) -> MensajeResponseSchema:
     """
-    Ejecuta el Caso de Uso CU-03 (`FormalizarContratoHandler`).
-    Verifica las 4 condiciones de `FormalizacionContratoSpecification` (BR-07):
-    1. Estado `BORRADOR` o `PENDIENTE_ANTICIPO` y fecha futura.
-    2. Capacidad entre 20 y 300 invitados (BR-05).
-    3. Al menos 1 proveedor `CONFIRMADO`, sin pendientes y máximo 15 activos (BR-15).
-    4. Anticipo mínimo pactado cubierto en `CuentaDePagos`.
+    Verifica que el anticipo esté pagado y los proveedores confirmados,
+    formalizando el contrato y devolviendo un mensaje claro de confirmación.
     """
+    evento_id_real = resolver_evento_id(evento_id)
     datos = payload or FormalizarContratoRequest()
     command = FormalizarContratoCommand(
-        evento_id=evento_id,
+        evento_id=evento_id_real,
         usuario_id=datos.usuario_id,
         fecha_operacion=datos.fecha_operacion,
     )
     handler = FormalizarContratoHandler(uow=uow)
     resultado = handler.handle(command)
 
-    return FormalizarContratoResponseSchema(
-        evento_id=resultado.evento_id,
-        estado_anterior=resultado.estado_anterior,
-        estado_actual=resultado.estado_actual,
-        monto_total_contrato=resultado.monto_total_contrato,
-        saldo_pendiente=resultado.saldo_pendiente,
-        moneda=resultado.moneda,
-        auditoria_id=resultado.auditoria_id,
+    # Mensaje amigable confirmando que el contrato quedó formalizado y mostrando el saldo restante
+    tot_txt = f"${resultado.monto_total_contrato:,.2f} {resultado.moneda}"
+    sal_txt = f"${resultado.saldo_pendiente:,.2f} {resultado.moneda}"
+    return MensajeResponseSchema(
+        message=(
+            "¡Su contrato ha sido formalizado y su evento ha quedado oficialmente confirmado! "
+            f"El costo total acordado es de {tot_txt} y su saldo pendiente por cubrir "
+            f"antes del evento es de {sal_txt}."
+        )
     )
 
 
 @router.post(
     "/{evento_id}/cambios-alcance",
-    response_model=CambioAlcanceResponseSchema,
+    response_model=MensajeResponseSchema,
     status_code=status.HTTP_200_OK,
-    summary="Solicitar y procesar cambio de alcance (CU-04 / BR-02, BR-05, BR-12)",
+    summary="Solicitar ampliación de invitados o servicios adicionales",
     responses={
         400: {"model": ErrorResponseSchema},
         404: {"model": ErrorResponseSchema},
@@ -260,17 +284,21 @@ def formalizar_contrato(
     },
 )
 def solicitar_cambio_alcance(
-    evento_id: UUID,
     payload: SolicitarCambioAlcanceRequest,
+    evento_id: UUID = Path(
+        ...,
+        examples=[str(SWAGGER_EVENTO_EJEMPLO)],
+        description="Identificador del evento (en Swagger puede dejar el valor de ejemplo)",
+    ),
     uow: IUnitOfWork = Depends(get_uow),
-) -> CambioAlcanceResponseSchema:
+) -> MensajeResponseSchema:
     """
-    Ejecuta el Caso de Uso CU-04 (`ProcesarCambioAlcanceHandler`).
-    Valida que el evento esté `CONFIRMADO`, que falten al menos 7 días naturales para la fecha
-    del evento (BR-02 / BR-12) y que el nuevo total de invitados no supere los 300 (BR-05).
+    Registra un cambio de invitados o servicios adicionales validando el plazo mínimo
+    de 7 días de anticipación, y explica el nuevo total en palabras sencillas.
     """
+    evento_id_real = resolver_evento_id(evento_id)
     command = ProcesarCambioAlcanceCommand(
-        evento_id=evento_id,
+        evento_id=evento_id_real,
         descripcion=payload.descripcion,
         invitados_adicionales=payload.invitados_adicionales,
         costo_adicional=payload.costo_adicional,
@@ -282,39 +310,57 @@ def solicitar_cambio_alcance(
     handler = ProcesarCambioAlcanceHandler(uow=uow)
     resultado = handler.handle(command)
 
-    return CambioAlcanceResponseSchema(
-        evento_id=resultado.evento_id,
-        cotizacion_id=resultado.cotizacion_id,
-        invitados_anteriores=resultado.invitados_anteriores,
-        invitados_actualizados=resultado.invitados_actualizados,
-        costo_adicional=resultado.costo_adicional,
-        nuevo_monto_total_contrato=resultado.nuevo_monto_total_contrato,
-        nuevo_saldo_pendiente=resultado.nuevo_saldo_pendiente,
-        estado_pago_actualizado=resultado.estado_pago_actualizado,
-        auditoria_id=resultado.auditoria_id,
+    # Mensaje claro detallando cuántos invitados quedaron y cómo se actualizó la cuenta
+    inv_ant = resultado.invitados_anteriores
+    inv_act = resultado.invitados_actualizados
+    extra_txt = f"${resultado.costo_adicional:,.2f} {payload.moneda}"
+    tot_txt = f"${resultado.nuevo_monto_total_contrato:,.2f} {payload.moneda}"
+    sal_txt = f"${resultado.nuevo_saldo_pendiente:,.2f} {payload.moneda}"
+    return MensajeResponseSchema(
+        message=(
+            f"El cambio solicitado ('{payload.descripcion}') se aplicó con éxito. "
+            f"El número de invitados pasó de {inv_ant} a {inv_act} personas "
+            f"con un cargo adicional de {extra_txt}. "
+            f"El nuevo total de su contrato es de {tot_txt} "
+            f"y su saldo pendiente actualizado es de {sal_txt}."
+        )
     )
 
 
 @router.post(
     "/evaluar-sla-proveedores",
-    response_model=ResultadoEvaluacionSLADTO,
+    response_model=MensajeResponseSchema,
     status_code=status.HTTP_200_OK,
-    summary="Ejecutar evaluación de SLA de 48h para proveedores pendientes (BR-04)",
+    summary="Revisar proveedores con plazo de confirmación de 48 horas vencido",
 )
 def evaluar_sla_proveedores(
     fecha_corte: Optional[datetime] = Body(default=None, embed=True),
     uow: IUnitOfWork = Depends(get_uow),
-) -> ResultadoEvaluacionSLADTO:
-    """Ejecuta el scheduler de dominio que vence asignaciones con más de 48h sin confirmar (BR-04)."""
+) -> MensajeResponseSchema:
+    """Revisa si algún proveedor tardó más de 48 horas en confirmar e informa el resultado claramente."""
     scheduler = EvaluarSLAProveedoresScheduler(uow=uow)
-    return scheduler.ejecutar(fecha_corte=fecha_corte)
+    resultado = scheduler.ejecutar(fecha_corte=fecha_corte)
+
+    # Mensaje comprensible para el usuario sin mostrar listas de UUIDs ni códigos
+    if resultado.total_asignaciones_vencidas > 0:
+        texto = (
+            f"Se revisaron los tiempos de respuesta de los proveedores y se detectó que "
+            f"{resultado.total_asignaciones_vencidas} proveedor(es) no confirmaron dentro del plazo "
+            "de 48 horas, por lo que su asignación fue marcada como vencida para que pueda elegir un reemplazo."
+        )
+    else:
+        texto = (
+            "Se revisaron los tiempos de respuesta de todos los proveedores y ninguno tiene "
+            "el plazo de confirmación vencido."
+        )
+    return MensajeResponseSchema(message=texto)
 
 
 @router.post(
     "/{evento_id}/proveedores/{proveedor_id}/confirmar",
-    response_model=AsignacionProveedorResponseSchema,
+    response_model=MensajeResponseSchema,
     status_code=status.HTTP_200_OK,
-    summary="Confirmar participación de un proveedor dentro del SLA de 48h (US-04 / BR-04)",
+    summary="Confirmar la asistencia de un proveedor asignado",
     responses={
         404: {"model": ErrorResponseSchema},
         409: {"model": ErrorResponseSchema},
@@ -322,21 +368,31 @@ def evaluar_sla_proveedores(
     },
 )
 def confirmar_proveedor_evento(
-    evento_id: UUID,
-    proveedor_id: UUID,
+    evento_id: UUID = Path(
+        ...,
+        examples=[str(SWAGGER_EVENTO_EJEMPLO)],
+        description="Identificador del evento (en Swagger puede dejar el valor de ejemplo)",
+    ),
+    proveedor_id: UUID = Path(
+        ...,
+        examples=[str(SWAGGER_PROVEEDOR_EJEMPLO)],
+        description="Identificador del proveedor (en Swagger puede dejar el valor de ejemplo)",
+    ),
     payload: Optional[ConfirmarProveedorRequest] = Body(default=None),
     uow: IUnitOfWork = Depends(get_uow),
-) -> AsignacionProveedorResponseSchema:
-    """Confirma un proveedor asignado validando que no haya expirado la ventana SLA de 48 horas (BR-04)."""
+) -> MensajeResponseSchema:
+    """Confirma la asistencia de un proveedor dentro de las 48 horas e informa al usuario claramente."""
+    evento_id_real = resolver_evento_id(evento_id)
+    proveedor_id_real = resolver_proveedor_id(proveedor_id)
     datos = payload or ConfirmarProveedorRequest()
     ahora = datos.fecha_confirmacion or datetime.now(timezone.utc)
 
     with uow:
-        evento = uow.eventos.obtener_por_id(evento_id)
+        evento = uow.eventos.obtener_por_id(evento_id_real)
         if evento is None:
-            raise EntidadNoEncontradaException(tipo_entidad="Evento", identificador=str(evento_id))
+            raise EntidadNoEncontradaException(tipo_entidad="Evento", identificador=str(evento_id_real))
 
-        asignacion = evento.confirmar_proveedor(proveedor_id=proveedor_id, fecha_confirmacion=ahora)
+        asignacion = evento.confirmar_proveedor(proveedor_id=proveedor_id_real, fecha_confirmacion=ahora)
 
         log = LogAuditoria(
             entidad_id=asignacion.id,
@@ -357,49 +413,54 @@ def confirmar_proveedor_evento(
         uow.auditoria.registrar(log)
         uow.commit()
 
-        return AsignacionProveedorResponseSchema(
-            id=asignacion.id,
-            proveedor_id=asignacion.proveedor_id,
-            nombre_servicio=asignacion.nombre_servicio,
-            estado=asignacion.estado.value,
-            fecha_asignacion=asignacion.fecha_asignacion,
-            fecha_limite_confirmacion=asignacion.fecha_limite_confirmacion,
+        # Mensaje sencillo confirmando qué servicio quedó confirmado
+        return MensajeResponseSchema(
+            message=(
+                f"¡Excelente! El proveedor del servicio '{asignacion.nombre_servicio}' ha confirmado "
+                "su participación en el evento a tiempo."
+            )
         )
 
 
 @router.post(
     "/{evento_id}/finalizar",
-    response_model=FinalizarEventoResponseSchema,
+    response_model=MensajeResponseSchema,
     status_code=status.HTTP_200_OK,
-    summary="Ejecutar y finalizar evento verificando liquidación total (US-08, US-15 / BR-06)",
+    summary="Concluir y cerrar el evento una vez liquidado en su totalidad",
     responses={
         400: {"model": ErrorResponseSchema},
         404: {"model": ErrorResponseSchema},
         409: {"model": ErrorResponseSchema},
+        422: {"model": ErrorResponseSchema},
     },
 )
 def finalizar_evento(
-    evento_id: UUID,
+    evento_id: UUID = Path(
+        ...,
+        examples=[str(SWAGGER_EVENTO_EJEMPLO)],
+        description="Identificador del evento (en Swagger puede dejar el valor de ejemplo)",
+    ),
     payload: Optional[FinalizarEventoRequest] = Body(default=None),
     uow: IUnitOfWork = Depends(get_uow),
-) -> FinalizarEventoResponseSchema:
+) -> MensajeResponseSchema:
     """
-    Valida que la CuentaDePagos esté 100% liquidada (saldo 0.00 MXN, BR-06) y transiciona
-    el evento a través de `EN_EJECUCION` hasta el estado terminal `FINALIZADO`.
+    Verifica que no exista ningún saldo pendiente y marca el evento como concluido,
+    entregando un mensaje de cierre claro para el usuario.
     """
+    evento_id_real = resolver_evento_id(evento_id)
     datos = payload or FinalizarEventoRequest()
     ahora = datetime.now(timezone.utc)
 
     with uow:
-        evento = uow.eventos.obtener_por_id(evento_id)
+        evento = uow.eventos.obtener_por_id(evento_id_real)
         if evento is None:
-            raise EntidadNoEncontradaException(tipo_entidad="Evento", identificador=str(evento_id))
+            raise EntidadNoEncontradaException(tipo_entidad="Evento", identificador=str(evento_id_real))
 
-        cuenta = uow.cuentas_pagos.obtener_por_evento_id(evento_id)
+        cuenta = uow.cuentas_pagos.obtener_por_evento_id(evento_id_real)
         if cuenta is None:
             raise EntidadNoEncontradaException(
                 tipo_entidad="CuentaDePagos para Evento",
-                identificador=str(evento_id),
+                identificador=str(evento_id_real),
             )
 
         estado_previo = evento.estado.value
@@ -426,22 +487,24 @@ def finalizar_evento(
         uow.recolectar_eventos_dominio(evento.pull_domain_events())
         uow.commit()
 
-        return FinalizarEventoResponseSchema(
-            evento_id=evento.id,
-            estado_anterior=estado_previo,
-            estado_actual=evento.estado.value,
-            estado_pago=cuenta.estado_pago.value,
-            total_pagado=cuenta.monto_contractual.pagos_realizados.monto,
-            moneda=cuenta.monto_contractual.subtotal.moneda,
-            auditoria_id=log.id,
+        total_pagado = cuenta.monto_contractual.pagos_realizados.monto
+        moneda = cuenta.monto_contractual.subtotal.moneda
+
+        # Mensaje final claro confirmando la liquidación y cierre del evento
+        return MensajeResponseSchema(
+            message=(
+                "¡El evento ha concluido y se ha cerrado exitosamente! "
+                f"Se verificó que el total del contrato por ${total_pagado:,.2f} {moneda} "
+                "fue pagado por completo sin dejar ningún saldo pendiente."
+            )
         )
 
 
 @router.post(
     "/{evento_id}/cancelar",
-    response_model=CancelarEventoResponseSchema,
+    response_model=MensajeResponseSchema,
     status_code=status.HTTP_200_OK,
-    summary="Cancelar evento y calcular devolución por penalización (US-09 / BR-03)",
+    summary="Cancelar el evento y conocer el reembolso aplicable",
     responses={
         400: {"model": ErrorResponseSchema},
         404: {"model": ErrorResponseSchema},
@@ -449,28 +512,32 @@ def finalizar_evento(
     },
 )
 def cancelar_evento(
-    evento_id: UUID,
+    evento_id: UUID = Path(
+        ...,
+        examples=[str(SWAGGER_EVENTO_EJEMPLO)],
+        description="Identificador del evento (en Swagger puede dejar el valor de ejemplo)",
+    ),
     payload: Optional[CancelarEventoRequest] = Body(default=None),
     uow: IUnitOfWork = Depends(get_uow),
-) -> CancelarEventoResponseSchema:
+) -> MensajeResponseSchema:
     """
-    Cancela un evento (BR-03 / US-09) y calcula automáticamente el monto de reembolso según
-    los días naturales de anticipación (>30 días: 100% sobre excedente de anticipo;
-    15 a 30 días: 50% sobre excedente de anticipo; <15 días: 0% sin reembolso).
+    Cancela el evento e informa claramente al usuario si le corresponde reembolso
+    de acuerdo con los pagos realizados y los días de anticipación.
     """
+    evento_id_real = resolver_evento_id(evento_id)
     datos = payload or CancelarEventoRequest()
     ahora = datos.fecha_cancelacion or datetime.now(timezone.utc)
 
     with uow:
-        evento = uow.eventos.obtener_por_id(evento_id)
+        evento = uow.eventos.obtener_por_id(evento_id_real)
         if evento is None:
-            raise EntidadNoEncontradaException(tipo_entidad="Evento", identificador=str(evento_id))
+            raise EntidadNoEncontradaException(tipo_entidad="Evento", identificador=str(evento_id_real))
 
-        cuenta = uow.cuentas_pagos.obtener_por_evento_id(evento_id)
+        cuenta = uow.cuentas_pagos.obtener_por_evento_id(evento_id_real)
         if cuenta is None:
             raise EntidadNoEncontradaException(
                 tipo_entidad="CuentaDePagos para Evento",
-                identificador=str(evento_id),
+                identificador=str(evento_id_real),
             )
 
         estado_previo = evento.estado.value
@@ -501,14 +568,20 @@ def cancelar_evento(
         uow.commit()
 
         mc = cuenta.monto_contractual
-        return CancelarEventoResponseSchema(
-            evento_id=evento.id,
-            estado_evento_anterior=estado_previo,
-            estado_evento_actual=evento.estado.value,
-            estado_pago_actual=cuenta.estado_pago.value,
-            pagos_realizados=mc.pagos_realizados.monto,
-            anticipo_retenido=mc.anticipo_pactado.monto,
-            monto_devolucion=devolucion.monto,
-            moneda=mc.subtotal.moneda,
-            auditoria_id=log.id,
-        )
+        moneda = mc.subtotal.moneda
+
+        # Mensaje comprensible explicando el resultado de la cancelación y la devolución
+        if devolucion.monto > 0:
+            texto = (
+                "Su evento ha sido cancelado conforme a su solicitud. "
+                f"De los ${mc.pagos_realizados.monto:,.2f} {moneda} abonados hasta la fecha, "
+                f"se retiene el anticipo base de ${mc.anticipo_pactado.monto:,.2f} {moneda} y le "
+                f"corresponde una devolución a su favor por ${devolucion.monto:,.2f} {moneda}."
+            )
+        else:
+            texto = (
+                "Su evento ha sido cancelado conforme a su solicitud. "
+                "De acuerdo con la política de cancelación y los pagos registrados hasta el momento, "
+                "no existe saldo adicional sujeto a reembolso."
+            )
+        return MensajeResponseSchema(message=texto)

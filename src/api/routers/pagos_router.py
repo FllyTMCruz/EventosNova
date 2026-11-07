@@ -1,13 +1,13 @@
 # src/api/routers/pagos_router.py
 from datetime import datetime, timezone
 from uuid import UUID
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Path, status
 from src.api.dependencies import get_uow
+from src.api.routers.eventos_router import SWAGGER_EVENTO_EJEMPLO, resolver_evento_id
 from src.api.schemas import (
     ErrorResponseSchema,
-    PagoRegistradoResponseSchema,
+    MensajeResponseSchema,
     RegistrarPagoRequest,
-    SaldoPendienteResponseSchema,
 )
 from src.application.dtos.consultas import ConsultarSaldoPendienteQuery
 from src.application.use_cases.consultar_saldo_pendiente import (
@@ -20,40 +20,55 @@ from src.domain.value_objects.dinero import Dinero
 
 router = APIRouter(prefix="/eventos", tags=["Pagos y Finanzas"])
 
+# Traducción amigable de estados para no mostrar nombres técnicos al usuario
+_ESTADOS_EVENTO_AMIGABLES = {
+    "BORRADOR": "en borrador",
+    "COTIZADO": "cotizado",
+    "PENDIENTE_ANTICIPO": "en espera del pago de anticipo",
+    "CONFIRMADO": "confirmado",
+    "EN_EJECUCION": "en curso",
+    "FINALIZADO": "finalizado y cerrado",
+    "CANCELADO": "cancelado",
+}
+
 
 @router.post(
     "/{evento_id}/pagos",
-    response_model=PagoRegistradoResponseSchema,
+    response_model=MensajeResponseSchema,
     status_code=status.HTTP_200_OK,
-    summary="Registrar abono o pago en la cuenta del evento",
+    summary="Registrar un pago o abono en la cuenta del evento",
     responses={
         404: {"model": ErrorResponseSchema},
         422: {"model": ErrorResponseSchema},
     },
 )
 def registrar_pago_evento(
-    evento_id: UUID,
     payload: RegistrarPagoRequest,
+    evento_id: UUID = Path(
+        ...,
+        examples=[str(SWAGGER_EVENTO_EJEMPLO)],
+        description="Identificador del evento (en Swagger puede dejar el valor de ejemplo)",
+    ),
     uow: IUnitOfWork = Depends(get_uow),
-) -> PagoRegistradoResponseSchema:
+) -> MensajeResponseSchema:
     """
-    Registra un pago sobre el Aggregate Root `CuentaDePagos`, recalcula el saldo pendiente
-    y el estado financiero (`ANTICIPO_CUBIERTO`, `PARCIALMENTE_PAGADO`, `LIQUIDADO`),
-    y persiste la traza inmutable en `LogAuditoria` (ADR-003).
+    Registra un pago o abono en la cuenta del evento y devuelve únicamente un mensaje
+    claro informando cuánto se abonó y cuánto resta por pagar.
     """
+    evento_id_real = resolver_evento_id(evento_id)
     ahora = datetime.now(timezone.utc)
     abono = Dinero(monto=payload.monto, moneda=payload.moneda)
 
     with uow:
-        evento = uow.eventos.obtener_por_id(evento_id)
+        evento = uow.eventos.obtener_por_id(evento_id_real)
         if evento is None:
-            raise EntidadNoEncontradaException(tipo_entidad="Evento", identificador=str(evento_id))
+            raise EntidadNoEncontradaException(tipo_entidad="Evento", identificador=str(evento_id_real))
 
-        cuenta = uow.cuentas_pagos.obtener_por_evento_id(evento_id)
+        cuenta = uow.cuentas_pagos.obtener_por_evento_id(evento_id_real)
         if cuenta is None:
             raise EntidadNoEncontradaException(
                 tipo_entidad="CuentaDePagos para Evento",
-                identificador=str(evento_id),
+                identificador=str(evento_id_real),
             )
 
         estado_pago_previo = cuenta.estado_pago.value
@@ -80,51 +95,76 @@ def registrar_pago_evento(
         uow.auditoria.registrar(log_auditoria)
         uow.commit()
 
-        return PagoRegistradoResponseSchema(
-            evento_id=evento.id,
-            cuenta_pagos_id=cuenta.id,
-            monto_abonado=abono.monto,
-            pagos_acumulados=cuenta.monto_contractual.pagos_realizados.monto,
-            saldo_pendiente=nuevo_saldo.monto,
-            estado_pago_anterior=estado_pago_previo,
-            estado_pago_actual=cuenta.estado_pago.value,
-            anticipo_cubierto=cuenta.esta_anticipo_cubierto(),
-            esta_liquidado=cuenta.esta_liquidada(),
-            moneda=abono.moneda,
-            auditoria_id=log_auditoria.id,
-        )
+        moneda = abono.moneda
+        acumulado = cuenta.monto_contractual.pagos_realizados.monto
+
+        # Mensaje claro según si la cuenta ya quedó liquidada, si ya cubrió el anticipo o si es abono parcial
+        if cuenta.esta_liquidada():
+            texto = (
+                f"Su pago por ${abono.monto:,.2f} {moneda} se registró con éxito. "
+                f"¡La cuenta de su evento ha quedado liquidada al 100% (total pagado: ${acumulado:,.2f} {moneda}) "
+                "y ya no tiene ningún saldo pendiente!"
+            )
+        elif cuenta.esta_anticipo_cubierto():
+            texto = (
+                f"Su pago por ${abono.monto:,.2f} {moneda} se registró con éxito y el anticipo requerido "
+                f"ya se encuentra cubierto. Su saldo restante por pagar es de ${nuevo_saldo.monto:,.2f} {moneda}. "
+                "Si su contrato aún no estaba confirmado, ya puede formalizarlo."
+            )
+        else:
+            texto = (
+                f"Su abono por ${abono.monto:,.2f} {moneda} se registró correctamente. "
+                f"Hasta el momento lleva abonados ${acumulado:,.2f} {moneda} y resta un saldo "
+                f"pendiente de ${nuevo_saldo.monto:,.2f} {moneda}."
+            )
+        return MensajeResponseSchema(message=texto)
 
 
 @router.get(
     "/{evento_id}/saldo",
-    response_model=SaldoPendienteResponseSchema,
+    response_model=MensajeResponseSchema,
     status_code=status.HTTP_200_OK,
-    summary="Consultar saldo pendiente y desglose financiero del evento (CU-05)",
+    summary="Consultar el resumen de pagos y saldo pendiente del evento",
     responses={
         404: {"model": ErrorResponseSchema},
     },
 )
 def consultar_saldo_pendiente(
-    evento_id: UUID,
+    evento_id: UUID = Path(
+        ...,
+        examples=[str(SWAGGER_EVENTO_EJEMPLO)],
+        description="Identificador del evento (en Swagger puede dejar el valor de ejemplo)",
+    ),
     uow: IUnitOfWork = Depends(get_uow),
-) -> SaldoPendienteResponseSchema:
-    """Ejecuta el Caso de Uso CU-05 (`ConsultarSaldoPendienteHandler`)."""
-    query = ConsultarSaldoPendienteQuery(evento_id=evento_id)
+) -> MensajeResponseSchema:
+    """Devuelve un resumen claro y fácil de leer del estado del evento y sus pagos."""
+    evento_id_real = resolver_evento_id(evento_id)
+    query = ConsultarSaldoPendienteQuery(evento_id=evento_id_real)
     handler = ConsultarSaldoPendienteHandler(uow=uow)
     dto = handler.handle(query)
 
-    return SaldoPendienteResponseSchema(
-        evento_id=dto.evento_id,
-        cuenta_pagos_id=dto.cuenta_pagos_id,
-        estado_evento=dto.estado_evento,
-        estado_pago=dto.estado_pago,
-        subtotal_base=dto.subtotal_base,
-        total_incrementos=dto.total_incrementos,
-        monto_total_actualizado=dto.monto_total_actualizado,
-        anticipo_pactado=dto.anticipo_pactado,
-        pagos_realizados=dto.pagos_realizados,
-        saldo_pendiente=dto.saldo_pendiente,
-        moneda=dto.moneda,
-        anticipo_cubierto=dto.anticipo_cubierto,
-        esta_liquidado=dto.esta_liquidado,
+    estado_ev = _ESTADOS_EVENTO_AMIGABLES.get(dto.estado_evento, dto.estado_evento.lower())
+    moneda = dto.moneda
+
+    # Construye una explicación clara del estado financiero sin mostrar códigos ni IDs
+    if dto.esta_liquidado:
+        situacion_pago = "la cuenta ya está liquidada en su totalidad sin adeudos pendientes"
+    elif dto.anticipo_cubierto:
+        situacion_pago = (
+            f"el anticipo ya fue cubierto y resta un saldo pendiente de ${dto.saldo_pendiente:,.2f} {moneda}"
+        )
+    else:
+        situacion_pago = (
+            f"aún está pendiente cubrir el anticipo mínimo de ${dto.anticipo_pactado:,.2f} {moneda} "
+            f"(saldo total por pagar: ${dto.saldo_pendiente:,.2f} {moneda})"
+        )
+
+    return MensajeResponseSchema(
+        message=(
+            f"Resumen de su evento: actualmente el evento se encuentra {estado_ev}. "
+            f"El costo total del contrato es de ${dto.monto_total_actualizado:,.2f} {moneda} "
+            f"(costo base de ${dto.subtotal_base:,.2f} {moneda} más ${dto.total_incrementos:,.2f} {moneda} "
+            f"por servicios o invitados adicionales), se han pagado ${dto.pagos_realizados:,.2f} {moneda} "
+            f"y {situacion_pago}."
+        )
     )

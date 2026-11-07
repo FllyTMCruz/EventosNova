@@ -14,11 +14,10 @@
       --primary: #1e293b;
       --accent: #2563eb;
       --ok: #15803d;
-      --warn: #b45309;
       --err: #b91c1c;
     }
-    * { box-sizing: border-box; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace; }
-    body { margin: 0; padding: 16px; background: var(--bg); color: var(--text); font-size: 13px; line-height: 1.4; }
+    * { box-sizing: border-box; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { margin: 0; padding: 16px; background: var(--bg); color: var(--text); font-size: 13.5px; line-height: 1.5; }
     .banner {
       background: #fef08a;
       border: 2px solid #ca8a04;
@@ -26,7 +25,7 @@
       padding: 8px 12px;
       font-weight: 700;
       text-align: center;
-      letter-spacing: 0.5px;
+      letter-spacing: 0.4px;
       margin-bottom: 12px;
       border-radius: 4px;
     }
@@ -40,7 +39,7 @@
       border-bottom: 1px solid var(--border);
       margin-bottom: 14px;
     }
-    h1 { margin: 0; font-size: 16px; }
+    h1 { margin: 0; font-size: 17px; }
     .links a {
       color: var(--accent);
       text-decoration: none;
@@ -50,238 +49,207 @@
     .links a:hover { text-decoration: underline; }
     .grid {
       display: grid;
-      grid-template-columns: 1fr 1.15fr;
-      gap: 14px;
+      grid-template-columns: 1fr 1.1fr;
+      gap: 16px;
     }
     @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
     .card {
       background: var(--card);
       border: 1px solid var(--border);
-      border-radius: 4px;
-      padding: 12px;
-      margin-bottom: 10px;
+      border-radius: 6px;
+      padding: 14px;
+      margin-bottom: 12px;
     }
     .card h2 {
       margin: 0 0 8px 0;
-      font-size: 13px;
-      text-transform: uppercase;
+      font-size: 13.5px;
       color: var(--primary);
       border-bottom: 1px solid #e2e8f0;
-      padding-bottom: 4px;
+      padding-bottom: 5px;
     }
-    .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 6px; }
-    label { font-size: 11px; color: var(--muted); display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 110px; }
+    .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 8px; }
+    label { font-size: 11.5px; color: var(--muted); display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 115px; }
     input {
-      padding: 5px 7px;
+      padding: 6px 8px;
       border: 1px solid var(--border);
-      border-radius: 3px;
-      font-size: 12px;
+      border-radius: 4px;
+      font-size: 12.5px;
     }
     button {
       cursor: pointer;
       background: var(--primary);
       color: #fff;
       border: 1px solid var(--primary);
-      padding: 6px 10px;
-      border-radius: 3px;
-      font-size: 12px;
+      padding: 7px 12px;
+      border-radius: 4px;
+      font-size: 12.5px;
       font-weight: 600;
     }
-    button:hover { opacity: 0.9; }
+    button:hover { opacity: 0.92; }
     button.secondary { background: #fff; color: var(--primary); }
     button.danger { background: var(--err); border-color: var(--err); }
-    .kpi-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-      gap: 8px;
-      margin-bottom: 10px;
-    }
-    .kpi {
-      border: 1px solid var(--border);
-      border-radius: 3px;
-      padding: 6px 8px;
+    .msg-box {
+      padding: 14px 16px;
+      border-radius: 6px;
+      border-left: 5px solid var(--accent);
       background: #f1f5f9;
+      font-size: 14px;
+      font-weight: 500;
+      margin-bottom: 12px;
+      color: var(--text);
     }
-    .kpi span { display: block; font-size: 10px; color: var(--muted); text-transform: uppercase; }
-    .kpi strong { font-size: 13px; }
+    .msg-box.ok { border-left-color: var(--ok); background: #f0fdf4; }
+    .msg-box.err { border-left-color: var(--err); background: #fef2f2; }
     pre {
       background: #0f172a;
       color: #e2e8f0;
-      padding: 10px;
-      border-radius: 4px;
+      padding: 14px;
+      border-radius: 6px;
       overflow-x: auto;
-      max-height: 210px;
+      white-space: pre-wrap;
+      word-wrap: break-word;
       margin: 0;
-      font-size: 11.5px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 12.5px;
     }
-    table { width: 100%; border-collapse: collapse; font-size: 11.5px; }
-    th, td { border: 1px solid var(--border); padding: 5px 6px; text-align: left; }
-    th { background: #f1f5f9; }
-    .status-pill {
-      display: inline-block;
-      padding: 2px 6px;
-      border-radius: 3px;
-      font-weight: 700;
-      font-size: 11px;
-    }
-    .s-ok { background: #dcfce7; color: var(--ok); }
-    .s-err { background: #fee2e2; color: var(--err); }
   </style>
 </head>
 <body>
   <div class="banner">
-    [ INTERFAZ DE PRUEBA — USO EXCLUSIVO PARA DEMOSTRACIÓN FUNCIONAL DE REGLAS DE NEGOCIO (PIA EQUIPO 16) ]
+    [ INTERFAZ DE PRUEBA — GESTIÓN DE EVENTOS NOVA (EQUIPO 16) ]
   </div>
 
   <header>
     <div>
-      <h1>Eventos Nova API — Consola Minimalista de Prueba</h1>
-      <div style="color: var(--muted); font-size: 11px;">
-        DDD + Specification + State Machine + Unit of Work + Auditoría Inmutable (ADR-003)
+      <h1>Eventos Nova — Panel de Operaciones para el Usuario</h1>
+      <div style="color: var(--muted); font-size: 12px;">
+        Respuestas claras e informativas mediante un único campo <code>message</code>
       </div>
     </div>
     <div class="links">
-      <span>Evento Activo: <strong id="lblEventoId">Ninguno</strong></span>
-      <a id="lnkDocs" href="/docs" target="_blank">[Abrir Swagger UI Oficial (/docs)]</a>
-      <a id="lnkOpenApi" href="/openapi.json" target="_blank">[OpenAPI JSON]</a>
-      <a id="lnkHealth" href="/health" target="_blank">[Health]</a>
+      <a id="lnkDocs" href="/docs" target="_blank">[Abrir Consola Swagger (/docs)]</a>
+      <a id="lnkHealth" href="/health" target="_blank">[Estado del Sistema]</a>
     </div>
   </header>
 
   <div class="grid">
-    <!-- COLUMNA IZQUIERDA: ACCIONES DE NEGOCIO -->
+    <!-- COLUMNA IZQUIERDA: ACCIONES DEL USUARIO -->
     <div>
       <div class="card">
-        <h2>1. Crear Evento Preliminar (POST /eventos | BR-05: 20..300 inv.)</h2>
+        <h2>1. Registrar Nuevo Evento</h2>
         <div class="row">
-          <label>Invitados (BR-05)
+          <label>Número de invitados (20 a 300)
             <input type="number" id="inpInvitados" value="150" />
           </label>
-          <label>Subtotal (MXN)
+          <label>Costo Total Base (MXN)
             <input type="text" id="inpSubtotal" value="100000.00" />
           </label>
-          <label>Anticipo 30% (BR-01)
+          <label>Anticipo Requerido (MXN)
             <input type="text" id="inpAnticipo" value="30000.00" />
           </label>
         </div>
         <div class="row">
-          <button onclick="crearEvento(false)">1. Crear Evento Válido (2 Proveedores Confirmados)</button>
-          <button class="danger" onclick="crearEvento(true)">Probar Violación BR-05 (450 inv. &rarr; 422)</button>
+          <button onclick="crearEvento(false)">1. Registrar Evento</button>
+          <button class="danger" onclick="crearEvento(true)">Probar exceso de invitados (450 personas)</button>
         </div>
       </div>
 
       <div class="card">
-        <h2>2. Formalizar Contrato (POST /eventos/{id}/formalizar | CU-03 / BR-07)</h2>
-        <div style="font-size: 11px; color: var(--muted); margin-bottom: 6px;">
-          Evalúa <code>FormalizacionContratoSpecification</code>: estado válido, anticipo cubierto, &ge;1 proveedor confirmado y rango de invitados.
+        <h2>2. Confirmar y Formalizar Contrato</h2>
+        <div style="font-size: 12px; color: var(--muted); margin-bottom: 8px;">
+          Confirma oficialmente su evento una vez que el anticipo ha sido cubierto y los proveedores están confirmados.
         </div>
         <div class="row">
-          <button onclick="formalizarContrato()">2. Ejecutar Formalización de Contrato (BR-07)</button>
+          <button onclick="formalizarContrato()">2. Formalizar Contrato del Evento</button>
         </div>
       </div>
 
       <div class="card">
-        <h2>3. Registrar Abono / Anticipo (POST /eventos/{id}/pagos | BR-01)</h2>
+        <h2>3. Registrar Pago o Abono</h2>
         <div class="row">
-          <label>Monto a abonar (MXN)
+          <label>Monto a pagar (MXN)
             <input type="text" id="inpMontoPago" value="30000.00" />
           </label>
-          <label>Referencia
-            <input type="text" id="inpRefPago" value="SPEI-ANTICIPO-30" />
+          <label>Concepto o referencia
+            <input type="text" id="inpRefPago" value="Pago de anticipo" />
           </label>
         </div>
         <div class="row">
-          <button onclick="registrarPago()">3. Registrar Pago en CuentaDePagos</button>
-          <button class="secondary" onclick="document.getElementById('inpMontoPago').value='85000.00'; registrarPago();">Liquidar Saldo ($85,000)</button>
+          <button onclick="registrarPago()">3. Registrar Pago</button>
+          <button class="secondary" onclick="document.getElementById('inpMontoPago').value='85000.00'; document.getElementById('inpRefPago').value='Liquidación total'; registrarPago();">Liquidar Saldo Restante ($85,000)</button>
         </div>
       </div>
 
       <div class="card">
-        <h2>4. Cambio de Alcance (POST /eventos/{id}/cambios-alcance | CU-04 / BR-02, BR-12)</h2>
+        <h2>4. Agregar Invitados o Servicios Adicionales</h2>
         <div class="row">
-          <label>Invitados extra
+          <label>Invitados adicionales
             <input type="number" id="inpInvExtra" value="30" />
           </label>
           <label>Costo adicional (MXN)
             <input type="text" id="inpCostoExtra" value="15000.00" />
           </label>
-          <label>Descripción
+          <label>Descripción del cambio
             <input type="text" id="inpDescExtra" value="3 mesas VIP adicionales" />
           </label>
         </div>
         <div class="row">
-          <button onclick="cambioAlcance(false)">4. Procesar Cambio de Alcance (&ge;7 días)</button>
-          <button class="danger" onclick="cambioAlcance(true)">Probar Violación BR-02 (&lt;7 días &rarr; 422)</button>
+          <button onclick="cambioAlcance(false)">4. Aplicar Cambio en el Evento</button>
+          <button class="danger" onclick="cambioAlcance(true)">Probar cambio fuera de tiempo (menos de 7 días)</button>
         </div>
       </div>
 
       <div class="card">
-        <h2>5. Proveedores y SLA 48 Horas (CU-02 / US-04 / BR-04 y BR-15)</h2>
+        <h2>5. Gestión de Proveedores del Evento</h2>
         <div class="row">
-          <button class="secondary" onclick="asignarProveedorPendiente()">5a. Asignar Proveedor (ASIGNADO)</button>
-          <button class="secondary" onclick="confirmarUltimoProveedor()">5b. Confirmar Proveedor (&le;48h &rarr; CONFIRMADO)</button>
-          <button onclick="evaluarSLA()">5c. Ejecutar Job SLA (+48h &rarr; VENCIDO)</button>
+          <button class="secondary" onclick="asignarProveedorPendiente()">5a. Agregar Proveedor</button>
+          <button class="secondary" onclick="confirmarUltimoProveedor()">5b. Confirmar Asistencia de Proveedor</button>
+          <button onclick="evaluarSLA()">5c. Revisar Proveedores con Plazo Vencido (48h)</button>
         </div>
       </div>
 
       <div class="card">
-        <h2>6. Cierre / Liquidación Final y Cancelación (US-08, US-09 / BR-03, BR-06)</h2>
+        <h2>6. Cierre o Cancelación del Evento</h2>
         <div class="row">
-          <button onclick="finalizarEvento()">6a. Ejecutar y Finalizar Evento (Requiere Saldo $0 | BR-06)</button>
-          <button class="danger" onclick="cancelarEvento()">6b. Cancelar Evento y Calcular Devolución (BR-03)</button>
+          <button onclick="finalizarEvento()">6a. Concluir y Cerrar Evento</button>
+          <button class="danger" onclick="cancelarEvento()">6b. Cancelar Evento y Calcular Reembolso</button>
         </div>
       </div>
     </div>
 
-    <!-- COLUMNA DERECHA: ESTADO FINANCIERO, RESPUESTA HTTP Y AUDITORÍA -->
+    <!-- COLUMNA DERECHA: CONSOLA CON ÚNICAMENTE EL CAMPO MESSAGE -->
     <div>
       <div class="card">
-        <h2>Estado del Evento y Cuenta de Pagos (GET /eventos/{id}/saldo | CU-05)</h2>
-        <div class="kpi-grid">
-          <div class="kpi"><span>Estado Evento</span><strong id="kEstadoEvento">-</strong></div>
-          <div class="kpi"><span>Estado Pago</span><strong id="kEstadoPago">-</strong></div>
-          <div class="kpi"><span>Subtotal Base</span><strong id="kSubtotal">$0.00</strong></div>
-          <div class="kpi"><span>Incrementos</span><strong id="kIncrementos">$0.00</strong></div>
-          <div class="kpi"><span>Total Contrato</span><strong id="kTotal">$0.00</strong></div>
-          <div class="kpi"><span>Pagos Realizados</span><strong id="kPagado">$0.00</strong></div>
-          <div class="kpi"><span>Saldo Pendiente</span><strong id="kSaldo">$0.00</strong></div>
-          <div class="kpi"><span>Anticipo Cubierto</span><strong id="kAnticipo">-</strong></div>
+        <h2>Mensaje Informativo para el Usuario</h2>
+        <div id="bannerMensaje" class="msg-box">
+          Seleccione "1. Registrar Evento" para comenzar y ver aquí el mensaje informativo de cada operación.
         </div>
-        <button class="secondary" onclick="refrescarEstado()">Refrescar Saldo y Auditoría</button>
+
+        <h2>Respuesta en Consola (Únicamente campo <code>message</code>)</h2>
+        <pre id="outJson">{
+  "message": "Seleccione una acción del panel izquierdo para consultar la respuesta del sistema."
+}</pre>
       </div>
 
       <div class="card">
-        <h2>Última Respuesta HTTP del Servidor <span id="httpBadge"></span></h2>
-        <pre id="outJson">// Selecciona "1. Crear Evento Válido" para iniciar la demostración...</pre>
-      </div>
-
-      <div class="card">
-        <h2>Bitácora de Auditoría Inmutable Append-Only (GET /eventos/{id}/auditoria | ADR-003)</h2>
-        <table>
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>Acción</th>
-              <th>Entidad</th>
-              <th>Transición de Estado</th>
-              <th>Fecha UTC</th>
-            </tr>
-          </thead>
-          <tbody id="tblAuditoria">
-            <tr><td colspan="5" style="text-align:center; color: var(--muted);">Sin registros aún</td></tr>
-          </tbody>
-        </table>
+        <h2>Consultas Rápidas del Evento</h2>
+        <div style="font-size: 12px; color: var(--muted); margin-bottom: 8px;">
+          Consulte en cualquier momento el resumen de su cuenta o el historial de movimientos en lenguaje claro.
+        </div>
+        <div class="row">
+          <button class="secondary" onclick="consultarSaldo()">Ver Resumen de Cuenta y Saldo</button>
+          <button class="secondary" onclick="consultarHistorial()">Ver Historial de Movimientos</button>
+        </div>
       </div>
     </div>
   </div>
 
   <script>
-    let eventoActualId = null;
-    let ultimoProveedorPendienteId = null;
+    let eventoActualId = "11111111-1111-1111-1111-111111111111";
+    let ultimoProveedorPendienteId = "22222222-2222-2222-2222-222222222222";
     const API_BASE = window.location.protocol === 'file:' ? 'http://127.0.0.1:8000' : '';
     if (API_BASE) {
       document.getElementById('lnkDocs').href = `${API_BASE}/docs`;
-      document.getElementById('lnkOpenApi').href = `${API_BASE}/openapi.json`;
       document.getElementById('lnkHealth').href = `${API_BASE}/health`;
     }
 
@@ -292,16 +260,19 @@
       });
     }
 
-    function mostrarRespuesta(metodo, ruta, status, data) {
-      const badge = document.getElementById('httpBadge');
-      const ok = status >= 200 && status < 300;
-      badge.className = 'status-pill ' + (ok ? 's-ok' : 's-err');
-      badge.textContent = `${metodo} ${ruta} -> HTTP ${status}`;
-      document.getElementById('outJson').textContent = JSON.stringify(data, null, 2);
+    // Muestra exclusivamente el objeto {"message": "..."} sin IDs ni códigos de estado técnicos
+    function mostrarRespuesta(ok, data) {
+      const soloMensaje = {
+        message: (data && data.message) ? data.message : "Operación procesada."
+      };
+      const banner = document.getElementById('bannerMensaje');
+      banner.className = 'msg-box ' + (ok ? 'ok' : 'err');
+      banner.textContent = soloMensaje.message;
+      document.getElementById('outJson').textContent = JSON.stringify(soloMensaje, null, 2);
     }
 
-    async function crearEvento(forzarErrorBR05) {
-      const invitados = forzarErrorBR05 ? 450 : parseInt(document.getElementById('inpInvitados').value, 10);
+    async function crearEvento(forzarExcesoInvitados) {
+      const invitados = forzarExcesoInvitados ? 450 : parseInt(document.getElementById('inpInvitados').value, 10);
       const payload = {
         cliente_id: uuid4(),
         fecha_evento: "2027-06-20T19:00:00Z",
@@ -320,29 +291,23 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
+      const headerId = r.headers.get('X-Evento-Id');
+      if (headerId) eventoActualId = headerId;
       const data = await r.json();
-      mostrarRespuesta('POST', '/eventos', r.status, data);
-      if (r.ok && data.evento_id) {
-        eventoActualId = data.evento_id;
-        document.getElementById('lblEventoId').textContent = eventoActualId;
-        await refrescarEstado();
-      }
+      mostrarRespuesta(r.ok, data);
     }
 
     async function formalizarContrato() {
-      if (!eventoActualId) return alert('Primero crea un evento en el Paso 1.');
       const r = await fetch(`${API_BASE}/eventos/${eventoActualId}/formalizar`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ fecha_operacion: "2027-05-01T12:00:00Z" })
       });
       const data = await r.json();
-      mostrarRespuesta('POST', `/eventos/${eventoActualId}/formalizar`, r.status, data);
-      await refrescarEstado();
+      mostrarRespuesta(r.ok, data);
     }
 
     async function registrarPago() {
-      if (!eventoActualId) return alert('Primero crea un evento en el Paso 1.');
       const payload = {
         monto: document.getElementById('inpMontoPago').value,
         moneda: "MXN",
@@ -354,20 +319,17 @@
         body: JSON.stringify(payload)
       });
       const data = await r.json();
-      mostrarRespuesta('POST', `/eventos/${eventoActualId}/pagos`, r.status, data);
-      await refrescarEstado();
+      mostrarRespuesta(r.ok, data);
     }
 
-    async function cambioAlcance(forzarErrorPlazoBR02) {
-      if (!eventoActualId) return alert('Primero crea un evento en el Paso 1.');
-      // Evento es 2027-06-20; si forzamos error enviamos 2027-06-18 (a solo 2 días < 7 días BR-02)
-      const fechaSolicitud = forzarErrorPlazoBR02 ? "2027-06-18T12:00:00Z" : "2027-06-01T12:00:00Z";
+    async function cambioAlcance(fueraDePlazo) {
+      const fechaSolicitud = fueraDePlazo ? "2027-06-18T12:00:00Z" : "2027-06-01T12:00:00Z";
       const payload = {
         descripcion: document.getElementById('inpDescExtra').value,
         invitados_adicionales: parseInt(document.getElementById('inpInvExtra').value, 10),
         costo_adicional: document.getElementById('inpCostoExtra').value,
         moneda: "MXN",
-        porcentaje_anticipo_adicional: "0.30",
+        porcentaje_anticipo_adicional: "0.00",
         fecha_solicitud: fechaSolicitud
       };
       const r = await fetch(`${API_BASE}/eventos/${eventoActualId}/cambios-alcance`, {
@@ -376,12 +338,10 @@
         body: JSON.stringify(payload)
       });
       const data = await r.json();
-      mostrarRespuesta('POST', `/eventos/${eventoActualId}/cambios-alcance`, r.status, data);
-      await refrescarEstado();
+      mostrarRespuesta(r.ok, data);
     }
 
     async function asignarProveedorPendiente() {
-      if (!eventoActualId) return alert('Primero crea un evento en el Paso 1.');
       const provId = uuid4();
       const payload = {
         proveedor_id: provId,
@@ -393,54 +353,20 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
+      if (r.ok) ultimoProveedorPendienteId = r.headers.get('X-Proveedor-Id') || provId;
       const data = await r.json();
-      if (r.ok) ultimoProveedorPendienteId = provId;
-      mostrarRespuesta('POST', `/eventos/${eventoActualId}/proveedores`, r.status, data);
-      await refrescarEstado();
+      mostrarRespuesta(r.ok, data);
     }
 
     async function confirmarUltimoProveedor() {
-      if (!eventoActualId || !ultimoProveedorPendienteId) {
-        return alert('Primero asigna un proveedor pendiente con el botón 5a.');
-      }
       const r = await fetch(`${API_BASE}/eventos/${eventoActualId}/proveedores/${ultimoProveedorPendienteId}/confirmar`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({})
       });
       const data = await r.json();
-      mostrarRespuesta('POST', `/eventos/${eventoActualId}/proveedores/${ultimoProveedorPendienteId}/confirmar`, r.status, data);
-      await refrescarEstado();
+      mostrarRespuesta(r.ok, data);
     }
-
-    async function finalizarEvento() {
-      if (!eventoActualId) return alert('Primero crea un evento en el Paso 1.');
-      const r = await fetch(`${API_BASE}/eventos/${evento_id_val()}/finalizar`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({})
-      });
-      const data = await r.json();
-      mostrarRespuesta('POST', `/eventos/${eventoActualId}/finalizar`, r.status, data);
-      await refrescarEstado();
-    }
-
-    async function cancelarEvento() {
-      if (!eventoActualId) return alert('Primero crea un evento en el Paso 1.');
-      const r = await fetch(`${API_BASE}/eventos/${eventoActualId}/cancelar`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          fecha_cancelacion: "2027-05-10T12:00:00Z",
-          motivo: "Cancelación solicitada en demostración (>30 días antes del evento)"
-        })
-      });
-      const data = await r.json();
-      mostrarRespuesta('POST', `/eventos/${eventoActualId}/cancelar`, r.status, data);
-      await refrescarEstado();
-    }
-
-    function evento_id_val() { return eventoActualId; }
 
     async function evaluarSLA() {
       const r = await fetch(`${API_BASE}/eventos/evaluar-sla-proveedores`, {
@@ -449,43 +375,42 @@
         body: JSON.stringify({ fecha_corte: "2028-01-01T00:00:00Z" })
       });
       const data = await r.json();
-      mostrarRespuesta('POST', '/eventos/evaluar-sla-proveedores', r.status, data);
-      if (eventoActualId) await refrescarEstado();
+      mostrarRespuesta(r.ok, data);
     }
 
-    async function refrescarEstado() {
-      if (!eventoActualId) return;
-      const rSaldo = await fetch(`${API_BASE}/eventos/${eventoActualId}/saldo`);
-      if (rSaldo.ok) {
-        const s = await rSaldo.json();
-        document.getElementById('kEstadoEvento').textContent = s.estado_evento;
-        document.getElementById('kEstadoPago').textContent = s.estado_pago;
-        document.getElementById('kSubtotal').textContent = `$${s.subtotal_base}`;
-        document.getElementById('kIncrementos').textContent = `$${s.total_incrementos}`;
-        document.getElementById('kTotal').textContent = `$${s.monto_total_actualizado}`;
-        document.getElementById('kPagado').textContent = `$${s.pagos_realizados}`;
-        document.getElementById('kSaldo').textContent = `$${s.saldo_pendiente}`;
-        document.getElementById('kAnticipo').textContent = s.anticipo_cubierto ? 'SÍ (Cubierto)' : 'NO (Pendiente)';
-      }
+    async function finalizarEvento() {
+      const r = await fetch(`${API_BASE}/eventos/${eventoActualId}/finalizar`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({})
+      });
+      const data = await r.json();
+      mostrarRespuesta(r.ok, data);
+    }
 
-      const rAud = await fetch(`${API_BASE}/eventos/${eventoActualId}/auditoria`);
-      if (rAud.ok) {
-        const a = await rAud.json();
-        const tbody = document.getElementById('tblAuditoria');
-        if (!a.registros || a.registros.length === 0) {
-          tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Sin registros</td></tr>';
-        } else {
-          tbody.innerHTML = a.registros.map((reg, idx) => `
-            <tr>
-              <td>${idx + 1}</td>
-              <td><strong>${reg.accion}</strong></td>
-              <td>${reg.tipo_entidad}</td>
-              <td>${reg.estado_anterior || 'N/A'} &rarr; <strong>${reg.estado_nuevo}</strong></td>
-              <td>${reg.fecha_registro}</td>
-            </tr>
-          `).join('');
-        }
-      }
+    async function cancelarEvento() {
+      const r = await fetch(`${API_BASE}/eventos/${eventoActualId}/cancelar`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fecha_cancelacion: "2027-05-10T12:00:00Z",
+          motivo: "Cancelación solicitada por el cliente"
+        })
+      });
+      const data = await r.json();
+      mostrarRespuesta(r.ok, data);
+    }
+
+    async function consultarSaldo() {
+      const r = await fetch(`${API_BASE}/eventos/${eventoActualId}/saldo`);
+      const data = await r.json();
+      mostrarRespuesta(r.ok, data);
+    }
+
+    async function consultarHistorial() {
+      const r = await fetch(`${API_BASE}/eventos/${eventoActualId}/auditoria`);
+      const data = await r.json();
+      mostrarRespuesta(r.ok, data);
     }
   </script>
 </body>

@@ -6,12 +6,49 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field
 
 
-class ErrorResponseSchema(BaseModel):
-    """Estructura estándar de error devuelta por la API ante violaciones de dominio."""
+class MensajeResponseSchema(BaseModel):
+    """
+    Respuesta única, clara y amigable pensada para un usuario común.
+    Oculta identificadores internos (UUIDs), códigos técnicos y nombres de estados crudos.
+    """
 
-    codigo: str = Field(..., description="Código identificador de la excepción de dominio")
-    mensaje: str = Field(..., description="Descripción legible de la regla de negocio infringida")
-    detalles: Optional[List[str]] = Field(default=None, description="Lista detallada de motivos si aplica")
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "message": (
+                    "La operación se realizó con éxito. Su evento ha sido actualizado " "correctamente en el sistema."
+                )
+            }
+        }
+    )
+
+    message: str = Field(
+        ...,
+        description="Mensaje informativo y fácil de leer para el usuario final sobre el resultado de la acción.",
+    )
+
+
+class ErrorResponseSchema(BaseModel):
+    """
+    Estructura de respuesta ante cualquier inconveniente o regla no cumplida,
+    expresada únicamente mediante un mensaje claro para el usuario común.
+    """
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "message": (
+                    "No fue posible completar la acción solicitada. Por favor verifique "
+                    "que se cumplan las condiciones del evento."
+                )
+            }
+        }
+    )
+
+    message: str = Field(
+        ...,
+        description="Explicación clara y comprensible del motivo por el cual no se pudo realizar la acción.",
+    )
 
 
 class ProveedorInicialInputSchema(BaseModel):
@@ -29,10 +66,10 @@ class CrearEventoPreliminarRequest(BaseModel):
         json_schema_extra={
             "example": {
                 "cliente_id": "11111111-2222-3333-4444-555555555555",
-                "fecha_evento": "2026-12-20T19:00:00Z",
+                "fecha_evento": "2027-06-20T19:00:00Z",
                 "cantidad_invitados": 150,
-                "subtotal_contrato": "120000.00",
-                "anticipo_pactado": "36000.00",
+                "subtotal_contrato": "100000.00",
+                "anticipo_pactado": "30000.00",
                 "moneda": "MXN",
                 "proveedores_iniciales": [
                     {
@@ -48,8 +85,8 @@ class CrearEventoPreliminarRequest(BaseModel):
 
     cliente_id: UUID
     fecha_evento: datetime
-    cantidad_invitados: int = Field(..., description="Cantidad de invitados (BR-05: 20 a 300)")
-    subtotal_contrato: Decimal = Field(..., gt=Decimal("0.00"), description="Subtotal base del contrato")
+    cantidad_invitados: int = Field(..., description="Cantidad de invitados (de 20 a 300 personas)")
+    subtotal_contrato: Decimal = Field(..., gt=Decimal("0.00"), description="Costo base del contrato")
     anticipo_pactado: Decimal = Field(..., gt=Decimal("0.00"), description="Monto mínimo de anticipo para formalizar")
     moneda: str = Field(default="MXN", min_length=3, max_length=3)
     proveedores_iniciales: List[ProveedorInicialInputSchema] = Field(default_factory=list)
@@ -82,6 +119,16 @@ class EventoPreliminarResponseSchema(BaseModel):
 
 
 class AsignarProveedorRequest(BaseModel):
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "proveedor_id": "bbbbbbbb-cccc-dddd-eeee-ffffffffffff",
+                "nombre_servicio": "Fotografía y Video Profesional",
+                "confirmar_inmediatamente": False,
+            }
+        }
+    )
+
     proveedor_id: UUID
     nombre_servicio: str = Field(..., min_length=2, max_length=150)
     confirmar_inmediatamente: bool = Field(default=False)
@@ -89,10 +136,10 @@ class AsignarProveedorRequest(BaseModel):
 
 
 class FormalizarContratoRequest(BaseModel):
-    usuario_id: Optional[UUID] = Field(default=None, description="UUID del operador o cliente que formaliza")
+    usuario_id: Optional[UUID] = Field(default=None, description="Identificador opcional del usuario que formaliza")
     fecha_operacion: Optional[datetime] = Field(
         default=None,
-        description="Fecha de referencia opcional (UTC) para pruebas deterministas",
+        description="Fecha de referencia opcional para la formalización",
     )
 
 
@@ -112,7 +159,7 @@ class SolicitarCambioAlcanceRequest(BaseModel):
             "example": {
                 "descripcion": "Ampliación de 30 invitados adicionales y barra de postres",
                 "invitados_adicionales": 30,
-                "costo_adicional": "25000.00",
+                "costo_adicional": "15000.00",
                 "moneda": "MXN",
                 "porcentaje_anticipo_adicional": "0.00",
                 "usuario_id": "99999999-8888-7777-6666-555555555555",
@@ -121,8 +168,8 @@ class SolicitarCambioAlcanceRequest(BaseModel):
     )
 
     descripcion: str = Field(..., min_length=5, max_length=255)
-    invitados_adicionales: int = Field(..., ge=0, description="Invitados adicionales a sumar al aforo actual")
-    costo_adicional: Decimal = Field(..., gt=Decimal("0.00"), description="Costo monetario del incremento")
+    invitados_adicionales: int = Field(..., ge=0, description="Invitados adicionales a sumar al evento")
+    costo_adicional: Decimal = Field(..., gt=Decimal("0.00"), description="Costo adicional del cambio solicitado")
     moneda: str = Field(default="MXN", min_length=3, max_length=3)
     porcentaje_anticipo_adicional: Decimal = Field(default=Decimal("0.00"), ge=Decimal("0.00"), le=Decimal("100.00"))
     usuario_id: Optional[UUID] = None
@@ -145,9 +192,9 @@ class RegistrarPagoRequest(BaseModel):
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
-                "monto": "36000.00",
+                "monto": "30000.00",
                 "moneda": "MXN",
-                "referencia_pago": "SPEI-984512",
+                "referencia_pago": "Transferencia bancaria",
                 "usuario_id": "99999999-8888-7777-6666-555555555555",
             }
         }
@@ -155,7 +202,7 @@ class RegistrarPagoRequest(BaseModel):
 
     monto: Decimal = Field(..., gt=Decimal("0.00"), description="Monto del abono a registrar")
     moneda: str = Field(default="MXN", min_length=3, max_length=3)
-    referencia_pago: str = Field(default="PAGO_DIRECTO", max_length=100)
+    referencia_pago: str = Field(default="Pago directo", max_length=100)
     usuario_id: Optional[UUID] = None
 
 
@@ -210,7 +257,7 @@ class HistorialAuditoriaResponseSchema(BaseModel):
 class ConfirmarProveedorRequest(BaseModel):
     fecha_confirmacion: Optional[datetime] = Field(
         default=None,
-        description="Fecha de confirmación opcional (UTC) para verificar SLA de 48h (BR-04)",
+        description="Fecha de confirmación opcional para validar el plazo de 48 horas",
     )
     usuario_id: Optional[UUID] = None
 
@@ -232,7 +279,7 @@ class FinalizarEventoResponseSchema(BaseModel):
 class CancelarEventoRequest(BaseModel):
     fecha_cancelacion: Optional[datetime] = Field(
         default=None,
-        description="Fecha de cancelación (UTC) para evaluar ventana de reembolso BR-03 (>30d, 15..30d, <15d)",
+        description="Fecha de cancelación opcional para calcular el reembolso correspondiente",
     )
     motivo: str = Field(default="Cancelación solicitada por el cliente", max_length=255)
     usuario_id: Optional[UUID] = None
